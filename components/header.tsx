@@ -55,7 +55,7 @@ export function Header() {
         <div className="flex items-center gap-3">
           <Link
             href="/signup"
-            className="hidden sm:flex items-center gap-2 px-5 py-2.5 bg-accent text-accent-foreground rounded-full text-sm font-medium hover:bg-accent/90 transition-colors"
+            className="flex items-center gap-2 px-5 py-2.5 bg-accent text-accent-foreground rounded-full text-sm font-medium hover:bg-accent/90 transition-colors"
           >
             회원가입
             <ArrowRight className="w-4 h-4" />
