@@ -29,7 +29,7 @@ export default function QAPage() {
   }
 
   return (
-    <div className="pt-24 pb-16">
+    <div className="pt-28 md:pt-32 pb-16">
       <div className="container mx-auto px-6 max-w-3xl">
         {/* Header */}
         <div className="text-center mb-8">

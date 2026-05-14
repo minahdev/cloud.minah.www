@@ -29,7 +29,7 @@ const projects = [
 
 export default function PortfolioPage() {
   return (
-    <div className="pt-24 pb-16">
+    <div className="pt-28 md:pt-32 pb-16">
       <div className="container mx-auto px-6">
         {/* Header */}
         <p className="text-primary font-mono text-sm tracking-wider mb-4">Portfolio</p>

@@ -1,6 +1,6 @@
 export default function SignupPage() {
   return (
-    <div className="pt-24 pb-16">
+    <div className="pt-28 md:pt-32 pb-16">
       <div className="container mx-auto px-6 max-w-md">
         <div className="text-center mb-8">
           <h1 className="text-3xl font-bold text-foreground mb-2">회원가입</h1>

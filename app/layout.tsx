@@ -1,4 +1,5 @@
 import type { Metadata } from 'next'
+import { Suspense } from 'react'
 import { Geist, Geist_Mono } from 'next/font/google'
 import { Analytics } from '@vercel/analytics/next'
 import './globals.css'
@@ -28,7 +29,9 @@ export default function RootLayout({
   return (
     <html lang="ko" className={`${geistSans.variable} ${geistMono.variable} bg-background`}>
       <body className="font-sans antialiased min-h-screen flex flex-col">
-        <Header />
+        <Suspense fallback={<div className="h-20 shrink-0 border-b border-border/50 bg-background/80 md:h-24" aria-hidden />}>
+          <Header />
+        </Suspense>
         <main className="flex-1">
           {children}
         </main>
