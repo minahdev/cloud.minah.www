@@ -1,8 +1,21 @@
 "use client"
 
+import { useState } from "react"
 import Link from "next/link"
+<<<<<<< HEAD
 import { usePathname, useSearchParams } from "next/navigation"
 import { Activity, ArrowRight } from "lucide-react"
+=======
+import { usePathname } from "next/navigation"
+import { Activity, ArrowRight, Menu } from "lucide-react"
+import {
+  Sheet,
+  SheetContent,
+  SheetHeader,
+  SheetTitle,
+  SheetClose,
+} from "@/components/ui/sheet"
+>>>>>>> 2ace0cb8bc6bf85fb5e918732fc05a79056c9321
 
 const navItems = [
   { href: "/", label: "소개" },
@@ -19,8 +32,12 @@ function navPillClass(active: boolean) {
 
 export function Header() {
   const pathname = usePathname()
+<<<<<<< HEAD
   const searchParams = useSearchParams()
   const profileTab = pathname === "/" && searchParams.get("profile") === "1"
+=======
+  const [isOpen, setIsOpen] = useState(false)
+>>>>>>> 2ace0cb8bc6bf85fb5e918732fc05a79056c9321
 
   return (
     <header className="fixed top-0 left-0 right-0 z-50 bg-background/80 backdrop-blur-sm border-b border-border/50">
@@ -56,6 +73,7 @@ export function Header() {
           })}
         </nav>
 
+<<<<<<< HEAD
         <div className="flex items-center gap-2 sm:gap-2.5 shrink-0">
           <Link
             href="/signup"
@@ -85,6 +103,72 @@ export function Header() {
             타이타닉
           </Link>
         </div>
+=======
+        <div className="flex items-center gap-3">
+          <Link
+            href="/signup"
+            className="flex items-center gap-2 px-5 py-2.5 bg-accent text-accent-foreground rounded-full text-sm font-medium hover:bg-accent/90 transition-colors"
+          >
+            회원가입
+            <ArrowRight className="w-4 h-4" />
+          </Link>
+
+          {/* Mobile Menu Button */}
+          <button
+            onClick={() => setIsOpen(true)}
+            className="md:hidden p-2 rounded-lg hover:bg-secondary transition-colors"
+            aria-label="메뉴 열기"
+          >
+            <Menu className="w-5 h-5 text-foreground" />
+          </button>
+        </div>
+
+        {/* Mobile Side Menu */}
+        <Sheet open={isOpen} onOpenChange={setIsOpen}>
+          <SheetContent side="right" className="w-72">
+            <SheetHeader>
+              <SheetTitle className="flex items-center gap-2">
+                <div className="w-8 h-8 bg-primary/20 rounded-lg flex items-center justify-center">
+                  <Activity className="w-5 h-5 text-primary" />
+                </div>
+                <span>Pace</span>
+              </SheetTitle>
+            </SheetHeader>
+            
+            <nav className="flex flex-col gap-2 mt-6">
+              {navItems.map((item) => {
+                const isActive = pathname === item.href
+                return (
+                  <SheetClose asChild key={item.href}>
+                    <Link
+                      href={item.href}
+                      className={`px-4 py-3 rounded-lg text-sm font-medium transition-colors ${
+                        isActive
+                          ? "bg-secondary text-foreground border border-border"
+                          : "text-muted-foreground hover:text-foreground hover:bg-secondary/50"
+                      }`}
+                    >
+                      {item.label}
+                    </Link>
+                  </SheetClose>
+                )
+              })}
+            </nav>
+
+            <div className="mt-8 pt-6 border-t border-border">
+              <SheetClose asChild>
+                <Link
+                  href="/signup"
+                  className="flex items-center justify-center gap-2 w-full px-5 py-3 bg-accent text-accent-foreground rounded-full text-sm font-medium hover:bg-accent/90 transition-colors"
+                >
+                  회원가입
+                  <ArrowRight className="w-4 h-4" />
+                </Link>
+              </SheetClose>
+            </div>
+          </SheetContent>
+        </Sheet>
+>>>>>>> 2ace0cb8bc6bf85fb5e918732fc05a79056c9321
       </div>
     </header>
   )
