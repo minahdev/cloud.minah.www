@@ -32,7 +32,7 @@ export default function RootLayout({
         <Suspense fallback={<div className="h-20 shrink-0 border-b border-border/50 bg-background/80 md:h-24" aria-hidden />}>
           <Header />
         </Suspense>
-        <main className="flex-1">
+        <main className="flex min-h-0 flex-1 flex-col">
           {children}
         </main>
         <Footer />

@@ -2,20 +2,16 @@
 
 import { useState } from "react"
 import Link from "next/link"
-<<<<<<< HEAD
-import { usePathname, useSearchParams } from "next/navigation"
-import { Activity, ArrowRight } from "lucide-react"
-=======
 import { usePathname } from "next/navigation"
 import { Activity, ArrowRight, Menu } from "lucide-react"
+
 import {
   Sheet,
+  SheetClose,
   SheetContent,
   SheetHeader,
   SheetTitle,
-  SheetClose,
 } from "@/components/ui/sheet"
->>>>>>> 2ace0cb8bc6bf85fb5e918732fc05a79056c9321
 
 const navItems = [
   { href: "/", label: "소개" },
@@ -30,35 +26,39 @@ function navPillClass(active: boolean) {
   }`
 }
 
+function sheetLinkClass(isActive: boolean) {
+  return `block rounded-lg px-4 py-3 text-sm font-medium transition-colors ${
+    isActive
+      ? "border border-border bg-secondary text-foreground"
+      : "text-muted-foreground hover:bg-secondary/50 hover:text-foreground"
+  }`
+}
+
 export function Header() {
   const pathname = usePathname()
-<<<<<<< HEAD
-  const searchParams = useSearchParams()
-  const profileTab = pathname === "/" && searchParams.get("profile") === "1"
-=======
-  const [isOpen, setIsOpen] = useState(false)
->>>>>>> 2ace0cb8bc6bf85fb5e918732fc05a79056c9321
+  const profileTab = pathname === "/profile"
+  const [sheetOpen, setSheetOpen] = useState(false)
 
   return (
-    <header className="fixed top-0 left-0 right-0 z-50 bg-background/80 backdrop-blur-sm border-b border-border/50">
-      <div className="container mx-auto px-6 sm:px-8 h-20 md:h-24 flex items-center justify-between gap-4">
-        <Link href="/" className="flex items-center gap-2.5 shrink-0">
-          <div className="w-10 h-10 md:w-11 md:h-11 bg-primary/20 rounded-xl flex items-center justify-center">
-            <Activity className="w-6 h-6 md:w-7 md:h-7 text-primary" />
+    <header className="fixed top-0 left-0 right-0 z-50 border-b border-border/50 bg-background/80 backdrop-blur-sm">
+      <div className="container mx-auto flex h-20 items-center justify-between gap-4 px-6 sm:px-8 md:h-24">
+        <Link href="/" className="flex shrink-0 items-center gap-2.5">
+          <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-primary/20 md:h-11 md:w-11">
+            <Activity className="h-6 w-6 text-primary md:h-7 md:w-7" />
           </div>
-          <span className="text-xl md:text-2xl font-semibold text-foreground tracking-tight">Pace</span>
+          <span className="text-xl font-semibold tracking-tight text-foreground md:text-2xl">Pace</span>
         </Link>
 
-        <nav className="hidden md:flex items-center gap-1.5 lg:gap-2 flex-1 justify-center min-w-0">
+        <nav className="hidden min-w-0 flex-1 items-center justify-center gap-1.5 md:flex lg:gap-2">
           {navItems.map((item) => {
             if (item.href === "/") {
-              const introActive = pathname === "/" && !profileTab
+              const introActive = pathname === "/"
               return (
                 <span key="home" className="inline-flex items-center gap-1.5">
                   <Link href="/" className={navPillClass(introActive)}>
                     소개
                   </Link>
-                  <Link href="/?profile=1" className={navPillClass(profileTab)}>
+                  <Link href="/profile" className={navPillClass(profileTab)}>
                     프로필
                   </Link>
                 </span>
@@ -73,20 +73,19 @@ export function Header() {
           })}
         </nav>
 
-<<<<<<< HEAD
-        <div className="flex items-center gap-2 sm:gap-2.5 shrink-0">
+        <div className="flex shrink-0 items-center gap-2 sm:gap-2.5">
           <Link
             href="/signup"
-            className="hidden sm:flex items-center gap-2 px-5 py-3 lg:px-6 bg-accent text-accent-foreground rounded-full text-base font-medium hover:bg-accent/90 transition-colors"
+            className="hidden items-center gap-2 rounded-full bg-accent px-5 py-3 text-base font-medium text-accent-foreground transition-colors hover:bg-accent/90 sm:flex lg:px-6"
           >
             회원가입
-            <ArrowRight className="w-5 h-5 shrink-0" />
+            <ArrowRight className="h-5 w-5 shrink-0" />
           </Link>
           <Link
             href="/login"
-            className={`px-5 py-3 lg:px-6 rounded-full text-base font-medium transition-colors ${
+            className={`rounded-full px-5 py-3 text-base font-medium transition-colors lg:px-6 ${
               pathname === "/login"
-                ? "bg-secondary text-foreground border border-border"
+                ? "border border-border bg-secondary text-foreground"
                 : "bg-primary text-primary-foreground hover:bg-primary/90"
             }`}
           >
@@ -94,82 +93,84 @@ export function Header() {
           </Link>
           <Link
             href="/titanic"
-            className={`px-4 py-2.5 lg:px-5 lg:py-3 rounded-full text-base font-medium transition-colors border ${
+            className={`rounded-full border px-4 py-2.5 text-base font-medium transition-colors lg:px-5 lg:py-3 ${
               pathname === "/titanic"
-                ? "bg-secondary text-foreground border-border"
-                : "text-muted-foreground border-border/60 hover:text-foreground hover:border-border"
+                ? "border-border bg-secondary text-foreground"
+                : "border-border/60 text-muted-foreground hover:border-border hover:text-foreground"
             }`}
           >
             타이타닉
           </Link>
-        </div>
-=======
-        <div className="flex items-center gap-3">
-          <Link
-            href="/signup"
-            className="flex items-center gap-2 px-5 py-2.5 bg-accent text-accent-foreground rounded-full text-sm font-medium hover:bg-accent/90 transition-colors"
-          >
-            회원가입
-            <ArrowRight className="w-4 h-4" />
-          </Link>
-
-          {/* Mobile Menu Button */}
           <button
-            onClick={() => setIsOpen(true)}
-            className="md:hidden p-2 rounded-lg hover:bg-secondary transition-colors"
+            type="button"
+            className="rounded-lg p-2 transition-colors hover:bg-secondary md:hidden"
             aria-label="메뉴 열기"
+            onClick={() => setSheetOpen(true)}
           >
-            <Menu className="w-5 h-5 text-foreground" />
+            <Menu className="h-5 w-5 text-foreground" />
           </button>
         </div>
+      </div>
 
-        {/* Mobile Side Menu */}
-        <Sheet open={isOpen} onOpenChange={setIsOpen}>
-          <SheetContent side="right" className="w-72">
-            <SheetHeader>
-              <SheetTitle className="flex items-center gap-2">
-                <div className="w-8 h-8 bg-primary/20 rounded-lg flex items-center justify-center">
-                  <Activity className="w-5 h-5 text-primary" />
-                </div>
-                <span>Pace</span>
-              </SheetTitle>
-            </SheetHeader>
-            
-            <nav className="flex flex-col gap-2 mt-6">
-              {navItems.map((item) => {
+      <Sheet open={sheetOpen} onOpenChange={setSheetOpen}>
+        <SheetContent side="right" className="w-72">
+          <SheetHeader>
+            <SheetTitle className="flex items-center gap-2">
+              <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-primary/20">
+                <Activity className="h-5 w-5 text-primary" />
+              </div>
+              <span>Pace</span>
+            </SheetTitle>
+          </SheetHeader>
+
+          <nav className="mt-6 flex flex-col gap-2">
+            <SheetClose asChild>
+              <Link href="/" className={sheetLinkClass(pathname === "/")}>
+                소개
+              </Link>
+            </SheetClose>
+            <SheetClose asChild>
+              <Link href="/profile" className={sheetLinkClass(profileTab)}>
+                프로필
+              </Link>
+            </SheetClose>
+            {navItems
+              .filter((i) => i.href !== "/")
+              .map((item) => {
                 const isActive = pathname === item.href
                 return (
                   <SheetClose asChild key={item.href}>
-                    <Link
-                      href={item.href}
-                      className={`px-4 py-3 rounded-lg text-sm font-medium transition-colors ${
-                        isActive
-                          ? "bg-secondary text-foreground border border-border"
-                          : "text-muted-foreground hover:text-foreground hover:bg-secondary/50"
-                      }`}
-                    >
+                    <Link href={item.href} className={sheetLinkClass(isActive)}>
                       {item.label}
                     </Link>
                   </SheetClose>
                 )
               })}
-            </nav>
+            <SheetClose asChild>
+              <Link href="/login" className={sheetLinkClass(pathname === "/login")}>
+                로그인
+              </Link>
+            </SheetClose>
+            <SheetClose asChild>
+              <Link href="/titanic" className={sheetLinkClass(pathname === "/titanic")}>
+                타이타닉
+              </Link>
+            </SheetClose>
+          </nav>
 
-            <div className="mt-8 pt-6 border-t border-border">
-              <SheetClose asChild>
-                <Link
-                  href="/signup"
-                  className="flex items-center justify-center gap-2 w-full px-5 py-3 bg-accent text-accent-foreground rounded-full text-sm font-medium hover:bg-accent/90 transition-colors"
-                >
-                  회원가입
-                  <ArrowRight className="w-4 h-4" />
-                </Link>
-              </SheetClose>
-            </div>
-          </SheetContent>
-        </Sheet>
->>>>>>> 2ace0cb8bc6bf85fb5e918732fc05a79056c9321
-      </div>
+          <div className="mt-8 border-t border-border pt-6">
+            <SheetClose asChild>
+              <Link
+                href="/signup"
+                className="flex w-full items-center justify-center gap-2 rounded-full bg-accent px-5 py-3 text-sm font-medium text-accent-foreground transition-colors hover:bg-accent/90"
+              >
+                회원가입
+                <ArrowRight className="h-4 w-4" />
+              </Link>
+            </SheetClose>
+          </div>
+        </SheetContent>
+      </Sheet>
     </header>
   )
 }

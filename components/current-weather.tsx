@@ -1,0 +1,230 @@
+"use client"
+
+import { useCallback, useEffect, useState } from "react"
+import { Cloud, Loader2, MapPin, RefreshCw } from "lucide-react"
+
+import { Button } from "@/components/ui/button"
+import { cn } from "@/lib/utils"
+
+type WeatherData = {
+  city: string
+  temp_c: number | null
+  feels_like_c: number | null
+  humidity: number | null
+  description: string
+  icon: string | null
+}
+
+type CurrentWeatherProps = {
+  className?: string
+  variant?: "default" | "compact"
+  /** 위치 권한 실패 시 표시할 기본 도시 */
+  fallbackCity?: string
+}
+
+export function CurrentWeather({
+  className,
+  variant = "default",
+  fallbackCity = "Seoul",
+}: CurrentWeatherProps) {
+  const [weather, setWeather] = useState<WeatherData | null>(null)
+  const [loading, setLoading] = useState(true)
+  const [error, setError] = useState<string | null>(null)
+  const [usingFallback, setUsingFallback] = useState(false)
+
+  const compact = variant === "compact"
+
+  const fetchWeather = useCallback((url: string) => {
+    setLoading(true)
+    setError(null)
+    return fetch(url)
+      .then(async (res) => {
+        const data = (await res.json()) as WeatherData & { error?: string; detail?: string }
+        if (!res.ok) {
+          throw new Error(data.error ?? data.detail ?? "날씨를 불러오지 못했습니다.")
+        }
+        setWeather(data)
+      })
+      .catch((e: unknown) => {
+        setWeather(null)
+        setError(e instanceof Error ? e.message : "날씨를 불러오지 못했습니다.")
+      })
+      .finally(() => setLoading(false))
+  }, [])
+
+  const loadWeather = useCallback(
+    (lat: number, lon: number) => {
+      setUsingFallback(false)
+      const params = new URLSearchParams({
+        lat: String(lat),
+        lon: String(lon),
+      })
+      return fetchWeather(`/api/weather?${params}`)
+    },
+    [fetchWeather],
+  )
+
+  const loadWeatherByCity = useCallback(
+    (city: string, asFallback = false) => {
+      setUsingFallback(asFallback)
+      const params = new URLSearchParams({ city })
+      return fetchWeather(`/api/weather?${params}`)
+    },
+    [fetchWeather],
+  )
+
+  const requestLocation = useCallback(() => {
+    if (!navigator.geolocation) {
+      if (fallbackCity) {
+        void loadWeatherByCity(fallbackCity, true)
+        return
+      }
+      setError("이 브라우저는 위치 정보를 지원하지 않습니다.")
+      setLoading(false)
+      return
+    }
+
+    setLoading(true)
+    setError(null)
+    setUsingFallback(false)
+    navigator.geolocation.getCurrentPosition(
+      (pos) => {
+        void loadWeather(pos.coords.latitude, pos.coords.longitude)
+      },
+      () => {
+        if (fallbackCity) {
+          void loadWeatherByCity(fallbackCity, true)
+          return
+        }
+        setLoading(false)
+        setError("위치 권한이 필요합니다. 브라우저에서 위치 허용 후 다시 시도해 주세요.")
+      },
+      { enableHighAccuracy: false, timeout: 15000, maximumAge: 300000 },
+    )
+  }, [fallbackCity, loadWeather, loadWeatherByCity])
+
+  useEffect(() => {
+    requestLocation()
+  }, [requestLocation])
+
+  const temp =
+    weather?.temp_c != null ? `${Math.round(weather.temp_c)}°C` : "—"
+  const iconUrl =
+    weather?.icon != null
+      ? `https://openweathermap.org/img/wn/${weather.icon}@2x.png`
+      : null
+
+  return (
+    <section
+      className={cn(
+        "rounded-2xl border border-border/60 bg-card/60 shadow-sm backdrop-blur-md",
+        compact ? "px-3.5 py-3 sm:min-w-[11.5rem]" : "mt-4 px-4 py-3",
+        className,
+      )}
+      aria-label="현재 위치 날씨"
+    >
+      <div className={cn("flex items-start justify-between gap-2", compact && "gap-1.5")}>
+        <div className="flex min-w-0 items-center gap-1.5">
+          <MapPin className={cn("shrink-0 text-primary", compact ? "size-3.5" : "size-4")} aria-hidden />
+          <h2 className={cn("font-medium text-foreground", compact ? "text-xs" : "text-sm")}>
+            {compact ? "오늘의 날씨" : "현재 위치 날씨"}
+          </h2>
+        </div>
+        <Button
+          type="button"
+          variant="ghost"
+          size="icon"
+          className={cn("shrink-0 text-muted-foreground", compact ? "size-7" : "size-8")}
+          onClick={requestLocation}
+          disabled={loading}
+          aria-label="날씨 새로고침"
+        >
+          <RefreshCw className={cn(compact ? "size-3.5" : "size-4", loading && "animate-spin")} />
+        </Button>
+      </div>
+
+      {loading && !weather && (
+        <div
+          className={cn(
+            "flex items-center gap-2 text-muted-foreground",
+            compact ? "mt-2 text-xs" : "mt-3 text-sm",
+          )}
+        >
+          <Loader2 className={cn("animate-spin", compact ? "size-3.5" : "size-4")} aria-hidden />
+          불러오는 중…
+        </div>
+      )}
+
+      {error && !loading && (
+        <div className={cn("space-y-2", compact ? "mt-2" : "mt-3")}>
+          <p className={cn("text-destructive", compact ? "text-xs leading-snug" : "text-sm")}>{error}</p>
+          <Button
+            type="button"
+            variant="outline"
+            size="sm"
+            className={compact ? "h-7 text-xs" : undefined}
+            onClick={requestLocation}
+          >
+            다시 시도
+          </Button>
+        </div>
+      )}
+
+      {weather && !error && (
+        <div className={cn("flex items-center", compact ? "mt-2 gap-2" : "mt-3 gap-4")}>
+          {iconUrl ? (
+            <img
+              src={iconUrl}
+              alt=""
+              width={compact ? 40 : 56}
+              height={compact ? 40 : 56}
+              className={cn("shrink-0", compact ? "size-10" : "size-14")}
+            />
+          ) : (
+            <Cloud
+              className={cn("shrink-0 text-primary/70", compact ? "size-10" : "size-14")}
+              aria-hidden
+            />
+          )}
+          <div className="min-w-0">
+            <p
+              className={cn(
+                "font-semibold tabular-nums text-foreground",
+                compact ? "text-xl leading-none" : "text-2xl",
+              )}
+            >
+              {temp}
+            </p>
+            <p className={cn("capitalize text-muted-foreground", compact ? "text-xs" : "text-sm")}>
+              {weather.description}
+            </p>
+            <p className={cn("text-muted-foreground", compact ? "mt-0.5 text-[10px] leading-tight" : "mt-1 text-xs")}>
+              <span className="font-medium text-foreground/90">{weather.city}</span>
+              {usingFallback && (
+                <span className="text-muted-foreground/80"> · 위치 미허용</span>
+              )}
+              {!compact && weather.humidity != null && (
+                <>
+                  {" · "}
+                  습도 {weather.humidity}%
+                </>
+              )}
+              {!compact && weather.feels_like_c != null && (
+                <>
+                  {" · "}
+                  체감 {Math.round(weather.feels_like_c)}°C
+                </>
+              )}
+              {compact && weather.humidity != null && (
+                <>
+                  {" · "}
+                  {weather.humidity}%
+                </>
+              )}
+            </p>
+          </div>
+        </div>
+      )}
+    </section>
+  )
+}

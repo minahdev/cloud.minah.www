@@ -1,7 +1,7 @@
 import Image from "next/image"
 import { Suspense } from "react"
 
-import { HomeMainTabs } from "@/components/home-main-tabs"
+import { ProfileContent } from "@/components/profile-content"
 
 const heroScrim: React.CSSProperties = {
   backgroundImage: [
@@ -10,9 +10,9 @@ const heroScrim: React.CSSProperties = {
   ].join(","),
 }
 
-export default function HomePage() {
+export default function ProfilePage() {
   return (
-    <div className="relative isolate flex min-h-0 flex-1 flex-col overflow-hidden pt-24 pb-14 md:pt-28 md:pb-16">
+    <div className="relative isolate flex min-h-0 flex-1 flex-col overflow-hidden pt-24 pb-14 md:min-h-[calc(100dvh-5rem)] md:pt-28 md:pb-16">
       <div className="pointer-events-none absolute inset-0 -z-10">
         <div className="absolute inset-0">
           <Image
@@ -27,11 +27,9 @@ export default function HomePage() {
         <div aria-hidden className="absolute inset-0" style={heroScrim} />
       </div>
 
-      <div className="container relative z-10 mx-auto flex min-h-0 flex-1 flex-col px-6 max-w-5xl">
+      <div className="container relative z-10 mx-auto flex min-h-[50vh] flex-1 flex-col px-6 max-w-6xl">
         <Suspense fallback={<div className="min-h-[16rem] animate-pulse rounded-2xl bg-secondary/30" aria-hidden />}>
-          <div className="flex min-h-0 flex-1 flex-col">
-            <HomeMainTabs />
-          </div>
+          <ProfileContent />
         </Suspense>
       </div>
     </div>
