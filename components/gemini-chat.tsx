@@ -12,6 +12,22 @@ type Role = "user" | "model"
 
 type Msg = { role: Role; text: string }
 
+function formatChatError(message: string): string {
+  const lower = message.toLowerCase()
+  if (
+    lower.includes("api_key_invalid") ||
+    lower.includes("api key expired") ||
+    lower.includes("gemini_api_key")
+  ) {
+    return (
+      "Gemini API 키가 만료되었거나 잘못되었습니다. " +
+      "https://aistudio.google.com/apikey 에서 새 키를 발급한 뒤 " +
+      "backend/.env 의 GEMINI_API_KEY 를 갱신하고 백엔드(uvicorn)를 재시작하세요."
+    )
+  }
+  return message
+}
+
 export function GeminiChat({ className }: { className?: string }) {
   const [messages, setMessages] = useState<Msg[]>([])
   const [input, setInput] = useState("")
@@ -52,7 +68,7 @@ export function GeminiChat({ className }: { className?: string }) {
         if (!message && Array.isArray(data.detail)) {
           message = data.detail.map((d) => d?.msg ?? "").filter(Boolean).join(", ")
         }
-        setError(message ?? "요청에 실패했습니다.")
+        setError(formatChatError(message ?? "요청에 실패했습니다."))
         return
       }
       if (!data.text) {
