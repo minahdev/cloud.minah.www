@@ -118,7 +118,7 @@ export function CurrentWeather({
     <section
       className={cn(
         "rounded-2xl border border-border/60 bg-card/60 shadow-sm backdrop-blur-md",
-        compact ? "px-3.5 py-3 sm:min-w-[11.5rem]" : "mt-4 px-4 py-3",
+        compact ? "h-fit px-3 py-2 sm:min-w-[11.5rem]" : "mt-4 px-4 py-3",
         className,
       )}
       aria-label="현재 위치 날씨"
@@ -147,7 +147,7 @@ export function CurrentWeather({
         <div
           className={cn(
             "flex items-center gap-2 text-muted-foreground",
-            compact ? "mt-2 text-xs" : "mt-3 text-sm",
+            compact ? "mt-1.5 text-xs" : "mt-3 text-sm",
           )}
         >
           <Loader2 className={cn("animate-spin", compact ? "size-3.5" : "size-4")} aria-hidden />
@@ -156,7 +156,7 @@ export function CurrentWeather({
       )}
 
       {error && !loading && (
-        <div className={cn("space-y-2", compact ? "mt-2" : "mt-3")}>
+        <div className={cn("space-y-2", compact ? "mt-1.5" : "mt-3")}>
           <p className={cn("text-destructive", compact ? "text-xs leading-snug" : "text-sm")}>{error}</p>
           <Button
             type="button"
@@ -171,18 +171,18 @@ export function CurrentWeather({
       )}
 
       {weather && !error && (
-        <div className={cn("flex items-center", compact ? "mt-2 gap-2" : "mt-3 gap-4")}>
+        <div className={cn("flex items-center", compact ? "mt-1.5 gap-1.5" : "mt-3 gap-4")}>
           {iconUrl ? (
             <img
               src={iconUrl}
               alt=""
-              width={compact ? 40 : 56}
-              height={compact ? 40 : 56}
-              className={cn("shrink-0", compact ? "size-10" : "size-14")}
+              width={compact ? 36 : 56}
+              height={compact ? 36 : 56}
+              className={cn("shrink-0", compact ? "size-9" : "size-14")}
             />
           ) : (
             <Cloud
-              className={cn("shrink-0 text-primary/70", compact ? "size-10" : "size-14")}
+              className={cn("shrink-0 text-primary/70", compact ? "size-9" : "size-14")}
               aria-hidden
             />
           )}
