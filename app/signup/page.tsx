@@ -1,11 +1,15 @@
 "use client"
 
+import { useRouter } from "next/navigation"
 import { FormEvent, useState } from "react"
+
+import { setLoggedInUserId } from "@/lib/auth-session"
 
 const inputClass =
   "w-full bg-secondary border border-border rounded-xl px-4 py-3 text-sm text-foreground placeholder:text-muted-foreground focus:outline-none focus:border-primary/50"
 
 export default function SignupPage() {
+  const router = useRouter()
   const [submitting, setSubmitting] = useState(false)
   const [error, setError] = useState<string | null>(null)
 
@@ -40,13 +44,8 @@ export default function SignupPage() {
         return
       }
 
-      alert(
-        `${json.message ?? "회원가입 요청이 접수되었습니다."}\n\n` +
-          `아이디: ${json.userId ?? userId}\n` +
-          `이메일: ${json.email ?? email}\n` +
-          `닉네임: ${json.nickname ?? nickname}`,
-      )
-      form.reset()
+      setLoggedInUserId(json.userId ?? userId)
+      router.push("/mypage")
     } catch {
       setError("서버에 연결할 수 없습니다. 백엔드(uvicorn) 실행 여부를 확인하세요.")
     } finally {

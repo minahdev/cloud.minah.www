@@ -6,16 +6,6 @@ const nextConfig = {
   images: {
     unoptimized: true,
   },
-  async redirects() {
-    return [
-      {
-        source: "/",
-        has: [{ type: "query", key: "profile", value: "1" }],
-        destination: "/profile",
-        permanent: false,
-      },
-    ]
-  },
 }
 
 export default nextConfig

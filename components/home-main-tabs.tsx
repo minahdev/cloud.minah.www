@@ -42,15 +42,15 @@ export function HomeMainTabs() {
       <div className="mb-5 min-w-0 md:mb-7 lg:col-start-1 lg:row-start-1 lg:mb-0">
         <div className="relative inline-flex items-center gap-2 rounded-full border border-primary/25 bg-secondary/80 px-3 py-1.5 text-xs shadow-sm shadow-primary/5 backdrop-blur-sm sm:px-3.5 sm:py-2 sm:text-sm">
           <Sparkles className="size-3.5 shrink-0 text-primary sm:size-4" aria-hidden />
-          <span className="font-medium tracking-wide text-foreground/90">AI · 실시간 운동 피드백</span>
+          <span className="font-medium tracking-wide text-foreground/90">헬스 · 러닝 · 사이클</span>
         </div>
 
-        <h1 className="relative mt-4 text-balance text-3xl font-bold leading-tight tracking-tight text-foreground drop-shadow-[0_2px_20px_oklch(0.05_0_0/0.65)] sm:text-4xl md:mt-5 md:text-[2.125rem] lg:text-5xl">
+        <h1 className="relative mt-4 text-balance text-3xl font-bold leading-[1.15] tracking-tight text-foreground drop-shadow-[0_2px_20px_oklch(0.05_0_0/0.65)] sm:text-4xl md:mt-5 md:text-[2.125rem] lg:text-5xl">
           <span className="block">
-            데이터로 <span className="text-primary">건강한 변화</span>를 이끄는
+            Your Ultimate <span className="text-primary">Pace</span>,
           </span>
           <span className="mt-0.5 block md:mt-1">
-            개발자, <span className="text-primary">김민아</span>입니다.
+            Driven by <span className="text-primary">AI</span>
           </span>
         </h1>
       </div>
@@ -62,9 +62,8 @@ export function HomeMainTabs() {
 
       <div className="relative max-w-3xl rounded-r-lg border-l-2 border-primary/40 bg-background/25 py-0.5 pl-4 backdrop-blur-[2px] md:pl-6 lg:col-start-1 lg:row-start-2">
         <p className="text-sm leading-relaxed text-muted-foreground md:text-base md:leading-relaxed">
-          현재 AI 기반 실시간 운동 피드백 솔루션{" "}
-          <strong className="font-semibold text-foreground">&apos;Pace&apos;</strong>를 개발하고 있습니다. 정교한 데이터 분석과 사용자 중심의 설계를
-          통해, 누구나 자신만의 페이스로 나아갈 수 있는 헬스케어의 미래를 만듭니다.
+          헬스, 러닝, 사이클까지. 스마트워치와 카메라로 당신의 모든 움직임을 실시간 코칭하는 AI 비서,{" "}
+          <strong className="font-semibold tracking-wide text-foreground">PACE</strong>.
         </p>
       </div>
 

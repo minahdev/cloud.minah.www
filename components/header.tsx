@@ -3,7 +3,7 @@
 import { useState } from "react"
 import Link from "next/link"
 import { usePathname } from "next/navigation"
-import { Activity, LogIn, Menu, UserPlus } from "lucide-react"
+import { Activity, LogIn, Menu, UserCircle, UserPlus } from "lucide-react"
 
 import {
   Sheet,
@@ -15,8 +15,6 @@ import {
 
 const navItems = [
   { href: "/", label: "소개" },
-  { href: "/projects", label: "프로젝트" },
-  { href: "/portfolio", label: "포트폴리오" },
   { href: "/qa", label: "헬스케어 Q&A" },
 ]
 
@@ -60,7 +58,7 @@ function headerActionClass(variant: "signup" | "login" | "outline", active = fal
 
 export function Header() {
   const pathname = usePathname()
-  const profileTab = pathname === "/profile"
+  const mypageTab = pathname === "/mypage"
   const [sheetOpen, setSheetOpen] = useState(false)
 
   return (
@@ -75,19 +73,6 @@ export function Header() {
 
         <nav className="hidden min-w-0 flex-1 items-center justify-center gap-1.5 md:flex lg:gap-2">
           {navItems.map((item) => {
-            if (item.href === "/") {
-              const introActive = pathname === "/"
-              return (
-                <span key="home" className="inline-flex items-center gap-1.5">
-                  <Link href="/" className={navPillClass(introActive)}>
-                    소개
-                  </Link>
-                  <Link href="/profile" className={navPillClass(profileTab)}>
-                    프로필
-                  </Link>
-                </span>
-              )
-            }
             const isActive = pathname === item.href
             return (
               <Link key={item.href} href={item.href} className={navPillClass(isActive)}>
@@ -105,6 +90,10 @@ export function Header() {
           <Link href="/login" className={headerActionClass("login", pathname === "/login")}>
             <LogIn className="h-4 w-4 shrink-0" aria-hidden />
             로그인
+          </Link>
+          <Link href="/mypage" className={headerActionClass("outline", mypageTab)}>
+            <UserCircle className="h-4 w-4 shrink-0" aria-hidden />
+            마이페이지
           </Link>
           <Link href="/titanic" className={headerActionClass("outline", pathname === "/titanic")}>
             타이타닉
@@ -132,28 +121,21 @@ export function Header() {
           </SheetHeader>
 
           <nav className="mt-6 flex flex-col gap-2">
+            {navItems.map((item) => {
+              const isActive = pathname === item.href
+              return (
+                <SheetClose asChild key={item.href}>
+                  <Link href={item.href} className={sheetLinkClass(isActive)}>
+                    {item.label}
+                  </Link>
+                </SheetClose>
+              )
+            })}
             <SheetClose asChild>
-              <Link href="/" className={sheetLinkClass(pathname === "/")}>
-                소개
+              <Link href="/mypage" className={sheetLinkClass(mypageTab)}>
+                마이페이지
               </Link>
             </SheetClose>
-            <SheetClose asChild>
-              <Link href="/profile" className={sheetLinkClass(profileTab)}>
-                프로필
-              </Link>
-            </SheetClose>
-            {navItems
-              .filter((i) => i.href !== "/")
-              .map((item) => {
-                const isActive = pathname === item.href
-                return (
-                  <SheetClose asChild key={item.href}>
-                    <Link href={item.href} className={sheetLinkClass(isActive)}>
-                      {item.label}
-                    </Link>
-                  </SheetClose>
-                )
-              })}
             <SheetClose asChild>
               <Link href="/titanic" className={sheetLinkClass(pathname === "/titanic")}>
                 타이타닉
