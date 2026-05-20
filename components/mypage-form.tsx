@@ -1,11 +1,10 @@
 "use client"
 
-import { FormEvent, useEffect, useMemo, useState } from "react"
-import { Activity, Heart, Save, UserRound } from "lucide-react"
+import { useRouter } from "next/navigation"
+import { type ChangeEvent, type FormEvent, useEffect, useMemo, useState } from "react"
+import { Activity, Heart, LogOut, Save, UserRound } from "lucide-react"
 
-import Link from "next/link"
-
-import { getLoggedInUserId } from "@/lib/auth-session"
+import { clearLoggedInUserId, getLoggedInUserId } from "@/lib/auth-session"
 import {
   calcBmi,
   EXPERIENCE_OPTIONS,
@@ -22,6 +21,42 @@ import {
 
 const inputClass =
   "w-full bg-secondary border border-border rounded-xl px-4 py-3 text-sm text-foreground placeholder:text-muted-foreground focus:outline-none focus:border-primary/50"
+
+type MyPageState = {
+  hydrated: boolean
+  userId: string | null
+  submitting: boolean
+  error: string | null
+  savedMessage: string | null
+  name: string
+  birthDate: string
+  phone: string
+  heightCm: string
+  weightKg: string
+  favoriteExercise: FavoriteExercise
+  favoriteExerciseOther: string
+  experience: ExerciseExperience
+  weeklyGoal: WeeklyExerciseGoal
+  healthNote: string
+}
+
+const initialState: MyPageState = {
+  hydrated: false,
+  userId: null,
+  submitting: false,
+  error: null,
+  savedMessage: null,
+  name: "",
+  birthDate: "",
+  phone: "",
+  heightCm: "",
+  weightKg: "",
+  favoriteExercise: "gym",
+  favoriteExerciseOther: "",
+  experience: "under_1",
+  weeklyGoal: "3_4",
+  healthNote: "",
+}
 
 function RadioGroup<T extends string>({
   name,
@@ -74,28 +109,36 @@ function RadioGroup<T extends string>({
 }
 
 export function MyPageForm() {
-  const [hydrated, setHydrated] = useState(false)
-  const [userId, setUserId] = useState<string | null>(null)
-  const [submitting, setSubmitting] = useState(false)
-  const [savedMessage, setSavedMessage] = useState<string | null>(null)
-  const [error, setError] = useState<string | null>(null)
+  const router = useRouter()
+  const [state, setState] = useState<MyPageState>(initialState)
 
-  const [name, setName] = useState("")
-  const [birthDate, setBirthDate] = useState("")
-  const [phone, setPhone] = useState("")
-  const [heightCm, setHeightCm] = useState("")
-  const [weightKg, setWeightKg] = useState("")
-  const [favoriteExercise, setFavoriteExercise] = useState<FavoriteExercise>("gym")
-  const [favoriteExerciseOther, setFavoriteExerciseOther] = useState("")
-  const [experience, setExperience] = useState<ExerciseExperience>("under_1")
-  const [weeklyGoal, setWeeklyGoal] = useState<WeeklyExerciseGoal>("3_4")
-  const [healthNote, setHealthNote] = useState("")
+  function handleLogout() {
+    if (!getLoggedInUserId()) {
+      router.replace("/login?from=/mypage")
+      return
+    }
+    clearLoggedInUserId()
+    router.replace("/login?from=/mypage")
+  }
+
+  const patch = (partial: Partial<MyPageState>) => {
+    setState((prev) => ({ ...prev, ...partial }))
+  }
+
+  const handleChange = (e: ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) => {
+    const { name, value } = e.target
+    if (name === "birthDate") {
+      patch({ birthDate: value.replace(/\D/g, "").slice(0, 8) })
+      return
+    }
+    patch({ [name]: value } as Partial<MyPageState>)
+  }
 
   useEffect(() => {
     const id = getLoggedInUserId()
-    setUserId(id)
+    patch({ userId: id })
     if (!id) {
-      setHydrated(true)
+      patch({ hydrated: true })
       return
     }
 
@@ -103,67 +146,98 @@ export function MyPageForm() {
       try {
         const saved = await fetchMyPageProfileFromApi(id)
         if (saved) {
-          setName(saved.name)
-          setBirthDate(saved.birthDate)
-          setPhone(saved.phone)
-          setHeightCm(saved.heightCm)
-          setWeightKg(saved.weightKg)
-          setFavoriteExercise(saved.favoriteExercise)
-          setFavoriteExerciseOther(saved.favoriteExerciseOther ?? "")
-          setExperience(saved.experience)
-          setWeeklyGoal(saved.weeklyGoal ?? "3_4")
-          setHealthNote(saved.healthNote ?? "")
+          patch({
+            name: saved.name,
+            birthDate: saved.birthDate,
+            phone: saved.phone,
+            heightCm: saved.heightCm,
+            weightKg: saved.weightKg,
+            favoriteExercise: saved.favoriteExercise,
+            favoriteExerciseOther: saved.favoriteExerciseOther ?? "",
+            experience: saved.experience,
+            weeklyGoal: saved.weeklyGoal ?? "3_4",
+            healthNote: saved.healthNote ?? "",
+          })
         }
       } catch (err) {
-        setError(err instanceof Error ? err.message : "프로필을 불러오지 못했습니다.")
+        patch({
+          error: err instanceof Error ? err.message : "프로필을 불러오지 못했습니다.",
+        })
       } finally {
-        setHydrated(true)
+        patch({ hydrated: true })
       }
     })()
   }, [])
 
-  const bmi = useMemo(() => calcBmi(heightCm, weightKg), [heightCm, weightKg])
+  const bmi = useMemo(
+    () => calcBmi(state.heightCm, state.weightKg),
+    [state.heightCm, state.weightKg],
+  )
 
-  async function onSubmit(e: FormEvent) {
+  const handleSaveProfile = async (e: FormEvent<HTMLFormElement>) => {
     e.preventDefault()
-    setError(null)
-    setSavedMessage(null)
+    patch({ error: null, savedMessage: null })
 
-    if (!userId) {
-      setError("로그인 후 마이페이지를 저장할 수 있습니다.")
+    if (!state.userId) {
+      patch({ error: "로그인 후 마이페이지를 저장할 수 있습니다." })
       return
     }
+
+    const entries = Object.fromEntries(new FormData(e.currentTarget).entries())
+    const birthDate = String(entries.birthDate ?? "").replace(/\D/g, "")
+    const favoriteExercise = String(entries.favoriteExercise ?? "gym") as FavoriteExercise
+    const favoriteExerciseOther = String(entries.favoriteExerciseOther ?? "").trim()
 
     if (!isValidBirthDate(birthDate)) {
-      setError("생년월일은 8자리(예: 20030401)로 입력해 주세요.")
+      patch({ error: "생년월일은 8자리(예: 20030401)로 입력해 주세요." })
       return
     }
-    if (favoriteExercise === "other" && !favoriteExerciseOther.trim()) {
-      setError("기타 운동을 선택한 경우 운동 종목을 입력해 주세요.")
+    if (favoriteExercise === "other" && !favoriteExerciseOther) {
+      patch({ error: "기타 운동을 선택한 경우 운동 종목을 입력해 주세요." })
       return
     }
 
-    setSubmitting(true)
+    patch({ submitting: true })
     try {
-      const message = await saveMyPageProfileToApi(userId, {
-        name: name.trim(),
-        birthDate: birthDate.replace(/\D/g, ""),
-        phone: phone.trim(),
-        heightCm: heightCm.trim(),
-        weightKg: weightKg.trim(),
+      const message = await saveMyPageProfileToApi(state.userId, {
+        name: String(entries.name ?? "").trim(),
+        birthDate,
+        phone: String(entries.phone ?? "").trim(),
+        heightCm: String(entries.heightCm ?? "").trim(),
+        weightKg: String(entries.weightKg ?? "").trim(),
         favoriteExercise,
-        favoriteExerciseOther: favoriteExerciseOther.trim(),
-        experience,
-        weeklyGoal,
-        healthNote: healthNote.trim(),
+        favoriteExerciseOther,
+        experience: String(entries.experience ?? "under_1") as ExerciseExperience,
+        weeklyGoal: String(entries.weeklyGoal ?? "3_4") as WeeklyExerciseGoal,
+        healthNote: String(entries.healthNote ?? "").trim(),
       })
-      setSavedMessage(message)
+      patch({ savedMessage: message })
     } catch (err) {
-      setError(err instanceof Error ? err.message : "저장에 실패했습니다.")
+      patch({
+        error: err instanceof Error ? err.message : "저장에 실패했습니다.",
+      })
     } finally {
-      setSubmitting(false)
+      patch({ submitting: false })
     }
   }
+
+  const {
+    hydrated,
+    userId,
+    submitting,
+    error,
+    savedMessage,
+    name,
+    birthDate,
+    phone,
+    heightCm,
+    weightKg,
+    favoriteExercise,
+    favoriteExerciseOther,
+    experience,
+    weeklyGoal,
+    healthNote,
+  } = state
 
   if (!hydrated) {
     return <div className="min-h-[20rem] animate-pulse rounded-2xl bg-secondary/30" aria-hidden />
@@ -185,18 +259,8 @@ export function MyPageForm() {
         </p>
       </div>
 
-      {!userId ? (
-        <p className="mb-6 rounded-xl border border-amber-500/30 bg-amber-500/10 px-4 py-3 text-sm text-foreground">
-          마이페이지를 저장하려면{" "}
-          <Link href="/login" className="font-medium text-primary hover:underline">
-            로그인
-          </Link>
-          이 필요합니다.
-        </p>
-      ) : null}
-
       <form
-        onSubmit={onSubmit}
+        onSubmit={handleSaveProfile}
         className="space-y-8 rounded-2xl border border-border bg-card/90 p-6 shadow-lg shadow-black/10 backdrop-blur-sm md:p-8"
       >
         <section className="space-y-4">
@@ -217,7 +281,7 @@ export function MyPageForm() {
                 className={inputClass}
                 placeholder="홍길동"
                 value={name}
-                onChange={(e) => setName(e.target.value)}
+                onChange={handleChange}
               />
             </div>
             <div>
@@ -234,7 +298,7 @@ export function MyPageForm() {
                 className={inputClass}
                 placeholder="20030401"
                 value={formatBirthDate(birthDate)}
-                onChange={(e) => setBirthDate(e.target.value.replace(/\D/g, "").slice(0, 8))}
+                onChange={handleChange}
               />
               <p className="mt-1 text-xs text-muted-foreground">숫자 8자리 (YYYYMMDD)</p>
             </div>
@@ -251,7 +315,7 @@ export function MyPageForm() {
                 className={inputClass}
                 placeholder="010-1234-5678"
                 value={phone}
-                onChange={(e) => setPhone(e.target.value)}
+                onChange={handleChange}
               />
             </div>
           </div>
@@ -278,7 +342,7 @@ export function MyPageForm() {
                 className={inputClass}
                 placeholder="170"
                 value={heightCm}
-                onChange={(e) => setHeightCm(e.target.value)}
+                onChange={handleChange}
               />
             </div>
             <div>
@@ -297,7 +361,7 @@ export function MyPageForm() {
                 className={inputClass}
                 placeholder="65"
                 value={weightKg}
-                onChange={(e) => setWeightKg(e.target.value)}
+                onChange={handleChange}
               />
             </div>
           </div>
@@ -314,7 +378,7 @@ export function MyPageForm() {
           legend="자주 하는 운동"
           options={FAVORITE_EXERCISE_OPTIONS}
           value={favoriteExercise}
-          onChange={setFavoriteExercise}
+          onChange={(v) => patch({ favoriteExercise: v })}
           disabled={submitting}
         />
 
@@ -330,7 +394,7 @@ export function MyPageForm() {
               className={inputClass}
               placeholder="예: 수영, 요가, 클라이밍"
               value={favoriteExerciseOther}
-              onChange={(e) => setFavoriteExerciseOther(e.target.value)}
+              onChange={handleChange}
             />
           </div>
         ) : null}
@@ -340,7 +404,7 @@ export function MyPageForm() {
           legend="운동 경력"
           options={EXPERIENCE_OPTIONS}
           value={experience}
-          onChange={setExperience}
+          onChange={(v) => patch({ experience: v })}
           disabled={submitting}
         />
 
@@ -349,7 +413,7 @@ export function MyPageForm() {
           legend="주간 운동 목표 (추가)"
           options={WEEKLY_GOAL_OPTIONS}
           value={weeklyGoal}
-          onChange={setWeeklyGoal}
+          onChange={(v) => patch({ weeklyGoal: v })}
           disabled={submitting}
         />
 
@@ -367,7 +431,7 @@ export function MyPageForm() {
             className={`${inputClass} resize-y min-h-[5rem]`}
             placeholder="예: 무릎 통증 있어 러닝 시 주의"
             value={healthNote}
-            onChange={(e) => setHealthNote(e.target.value)}
+            onChange={handleChange}
           />
         </section>
 
@@ -383,6 +447,18 @@ export function MyPageForm() {
           {submitting ? "저장 중…" : "프로필 저장"}
         </button>
       </form>
+
+      <div className="mt-8 border-t border-border/60 pt-6">
+        <button
+          type="button"
+          onClick={handleLogout}
+          disabled={submitting}
+          className="inline-flex w-full items-center justify-center gap-2 rounded-xl border border-border bg-secondary/50 py-3 text-sm font-medium text-muted-foreground transition-colors hover:border-destructive/40 hover:bg-destructive/10 hover:text-destructive disabled:opacity-60"
+        >
+          <LogOut className="size-4" aria-hidden />
+          로그아웃
+        </button>
+      </div>
     </div>
   )
 }

@@ -1,55 +1,78 @@
 "use client"
 
 import Link from "next/link"
-import { useRouter } from "next/navigation"
-import { FormEvent, useState } from "react"
+import { useRouter, useSearchParams } from "next/navigation"
+import { type FormEvent, useState } from "react"
 
-import { setLoggedInUserId } from "@/lib/auth-session"
+import { setLoggedInUser } from "@/lib/auth-session"
 
 const inputClass =
   "w-full bg-secondary border border-border rounded-xl px-4 py-3 text-sm text-foreground placeholder:text-muted-foreground focus:outline-none focus:border-primary/50"
 
+type LoginUiState = {
+  submitting: boolean
+  error: string | null
+}
+
+const initialUiState: LoginUiState = {
+  submitting: false,
+  error: null,
+}
+
 export default function LoginPage() {
   const router = useRouter()
-  const [submitting, setSubmitting] = useState(false)
-  const [error, setError] = useState<string | null>(null)
+  const searchParams = useSearchParams()
+  const [state, setState] = useState<LoginUiState>(initialUiState)
 
-  async function onSubmit(e: FormEvent<HTMLFormElement>) {
+  const handleLogin = async (e: FormEvent<HTMLFormElement>) => {
     e.preventDefault()
-    setError(null)
+    setState((prev) => ({ ...prev, error: null, submitting: true }))
 
-    const form = e.currentTarget
-    const data = new FormData(form)
-    const userId = String(data.get("userId") ?? "").trim()
-    const password = String(data.get("password") ?? "")
+    const formData = new FormData(e.currentTarget)
+    const entries = Object.fromEntries(formData.entries())
+    const formProps = {
+      userId: String(entries.userId ?? "").trim(),
+      password: String(entries.password ?? ""),
+    }
 
-    setSubmitting(true)
     try {
       const res = await fetch("/api/login", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ userId, password }),
+        body: JSON.stringify(formProps),
       })
       const json = (await res.json()) as {
         message?: string
         userId?: string
+        role?: string
         error?: string
       }
 
       if (!res.ok) {
-        setError(json.error ?? "로그인에 실패했습니다.")
+        setState((prev) => ({
+          ...prev,
+          submitting: false,
+          error: json.error ?? "로그인에 실패했습니다.",
+        }))
         return
       }
 
-      const loggedInId = json.userId ?? userId
-      setLoggedInUserId(loggedInId)
-      router.push("/mypage")
+      setLoggedInUser(
+        json.userId ?? formProps.userId,
+        json.role === "admin" ? "admin" : "user",
+      )
+      const from = searchParams.get("from")
+      router.push(from?.startsWith("/") ? from : "/")
     } catch {
-      setError("서버에 연결할 수 없습니다. 백엔드(uvicorn) 실행 여부를 확인하세요.")
-    } finally {
-      setSubmitting(false)
+      setState((prev) => ({
+        ...prev,
+        submitting: false,
+        error: "서버에 연결할 수 없습니다. 백엔드(uvicorn) 실행 여부를 확인하세요.",
+      }))
     }
   }
+
+  const { submitting, error } = state
 
   return (
     <div className="pt-28 md:pt-32 pb-16">
@@ -60,7 +83,7 @@ export default function LoginPage() {
         </div>
 
         <div className="bg-card border border-border rounded-2xl p-6">
-          <form className="space-y-4" onSubmit={onSubmit}>
+          <form className="space-y-4" onSubmit={handleLogin}>
             <div>
               <label htmlFor="login-user-id" className="block text-sm font-medium text-foreground mb-2">
                 아이디

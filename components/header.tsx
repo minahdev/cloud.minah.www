@@ -3,19 +3,18 @@
 import { useState } from "react"
 import Link from "next/link"
 import { usePathname } from "next/navigation"
-import { Activity, LogIn, Menu, UserCircle, UserPlus } from "lucide-react"
+import { Activity, Menu } from "lucide-react"
 
-import {
-  Sheet,
-  SheetClose,
-  SheetContent,
-  SheetHeader,
-  SheetTitle,
-} from "@/components/ui/sheet"
+import { Sheet, SheetClose, SheetContent, SheetHeader, SheetTitle } from "@/components/ui/sheet"
 
 const navItems = [
-  { href: "/", label: "소개" },
-  { href: "/qa", label: "헬스케어 Q&A" },
+  { href: "/", label: "메인" },
+  { href: "/train", label: "훈련" },
+  { href: "/analytics", label: "분석" },
+  { href: "/community", label: "커뮤니티" },
+  { href: "/calories", label: "칼로리 검색" },
+  { href: "/notices", label: "공지사항" },
+  { href: "/titanic", label: "타이타닉" },
 ]
 
 function navPillClass(active: boolean) {
@@ -24,54 +23,21 @@ function navPillClass(active: boolean) {
   }`
 }
 
-function sheetLinkClass(isActive: boolean) {
-  return `block rounded-lg px-4 py-3 text-sm font-medium transition-colors ${
-    isActive
-      ? "border border-border bg-secondary text-foreground"
-      : "text-muted-foreground hover:bg-secondary/50 hover:text-foreground"
-  }`
-}
-
-function headerActionClass(variant: "signup" | "login" | "outline", active = false) {
-  const base =
-    "inline-flex items-center justify-center gap-1.5 rounded-full border px-4 py-2 text-sm font-semibold transition-all lg:px-5 lg:py-2.5 lg:text-[0.9375rem]"
-  if (variant === "signup") {
-    return `${base} ${
-      active
-        ? "border-accent bg-accent text-accent-foreground shadow-[0_0_24px_-6px] shadow-accent/50"
-        : "border-accent/50 bg-accent/90 text-accent-foreground hover:border-accent hover:bg-accent shadow-[0_0_20px_-8px] shadow-accent/35"
-    }`
-  }
-  if (variant === "login") {
-    return `${base} ${
-      active
-        ? "border-primary bg-primary text-primary-foreground shadow-[0_0_24px_-6px] shadow-primary/50"
-        : "border-primary/50 bg-primary/90 text-primary-foreground hover:border-primary hover:bg-primary shadow-[0_0_20px_-8px] shadow-primary/35"
-    }`
-  }
-  return `${base} ${
-    active
-      ? "border-border bg-secondary/80 font-medium text-foreground"
-      : "border-border/60 bg-transparent font-medium text-muted-foreground hover:border-border hover:bg-secondary/40 hover:text-foreground"
-  }`
-}
-
 export function Header() {
   const pathname = usePathname()
   const mypageTab = pathname === "/mypage"
-  const [sheetOpen, setSheetOpen] = useState(false)
+  const [menuOpen, setMenuOpen] = useState(false)
 
   return (
     <header className="fixed top-0 left-0 right-0 z-50 border-b border-border/50 bg-background/80 backdrop-blur-sm">
-      <div className="container mx-auto flex h-20 items-center justify-between gap-4 px-6 sm:px-8 md:h-24">
-        <Link href="/" className="flex shrink-0 items-center gap-2.5">
-          <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-primary/20 md:h-11 md:w-11">
+      <div className="container mx-auto flex h-16 items-center justify-between gap-3 px-4 sm:px-6 md:h-20 md:gap-4 lg:h-24">
+        <Link href="/" className="flex shrink-0 items-center" aria-label="메인으로 이동" title="메인">
+          <div className="flex h-9 w-9 items-center justify-center rounded-xl bg-primary/20 sm:h-10 sm:w-10 md:h-11 md:w-11">
             <Activity className="h-6 w-6 text-primary md:h-7 md:w-7" />
           </div>
-          <span className="text-xl font-semibold tracking-tight text-foreground md:text-2xl">Pace</span>
         </Link>
 
-        <nav className="hidden min-w-0 flex-1 items-center justify-center gap-1.5 md:flex lg:gap-2">
+        <nav className="hidden" aria-hidden>
           {navItems.map((item) => {
             const isActive = pathname === item.href
             return (
@@ -82,41 +48,42 @@ export function Header() {
           })}
         </nav>
 
-        <div className="flex shrink-0 items-center gap-2 sm:gap-2.5">
-          <Link href="/signup" className={`hidden sm:inline-flex ${headerActionClass("signup")}`}>
-            <UserPlus className="h-4 w-4 shrink-0" aria-hidden />
-            회원가입
+        <div className="flex shrink-0 items-center gap-2">
+          <Link
+            href="/mypage"
+            className={[
+              "inline-flex h-9 min-w-11 items-center justify-center rounded-full border px-3 text-sm font-bold tracking-wide transition-colors",
+              mypageTab
+                ? "border-primary/60 bg-primary/20 text-primary"
+                : "border-border/60 bg-secondary/40 text-foreground hover:bg-secondary/60",
+              "sm:h-10 sm:px-4",
+            ].join(" ")}
+            aria-label="마이페이지"
+            title="마이페이지"
+          >
+            MY
           </Link>
-          <Link href="/login" className={headerActionClass("login", pathname === "/login")}>
-            <LogIn className="h-4 w-4 shrink-0" aria-hidden />
-            로그인
-          </Link>
-          <Link href="/mypage" className={headerActionClass("outline", mypageTab)}>
-            <UserCircle className="h-4 w-4 shrink-0" aria-hidden />
-            마이페이지
-          </Link>
-          <Link href="/titanic" className={headerActionClass("outline", pathname === "/titanic")}>
-            타이타닉
-          </Link>
+
           <button
             type="button"
-            className="rounded-lg p-2 transition-colors hover:bg-secondary md:hidden"
+            onClick={() => setMenuOpen(true)}
+            className="inline-flex h-9 w-9 items-center justify-center rounded-full border border-border/60 bg-secondary/40 text-foreground transition-colors hover:bg-secondary/60 sm:h-10 sm:w-10"
             aria-label="메뉴 열기"
-            onClick={() => setSheetOpen(true)}
+            title="메뉴"
           >
-            <Menu className="h-5 w-5 text-foreground" />
+            <Menu className="h-5 w-5" aria-hidden />
           </button>
         </div>
       </div>
 
-      <Sheet open={sheetOpen} onOpenChange={setSheetOpen}>
+      <Sheet open={menuOpen} onOpenChange={setMenuOpen}>
         <SheetContent side="right" className="w-72">
           <SheetHeader>
             <SheetTitle className="flex items-center gap-2">
               <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-primary/20">
-                <Activity className="h-5 w-5 text-primary" />
+                <Activity className="h-5 w-5 text-primary" aria-hidden />
               </div>
-              <span>Pace</span>
+              메뉴
             </SheetTitle>
           </SheetHeader>
 
@@ -125,41 +92,34 @@ export function Header() {
               const isActive = pathname === item.href
               return (
                 <SheetClose asChild key={item.href}>
-                  <Link href={item.href} className={sheetLinkClass(isActive)}>
+                  <Link
+                    href={item.href}
+                    className={[
+                      "block rounded-lg px-4 py-3 text-sm font-medium transition-colors",
+                      isActive
+                        ? "border border-border bg-secondary text-foreground"
+                        : "text-muted-foreground hover:bg-secondary/50 hover:text-foreground",
+                    ].join(" ")}
+                  >
                     {item.label}
                   </Link>
                 </SheetClose>
               )
             })}
             <SheetClose asChild>
-              <Link href="/mypage" className={sheetLinkClass(mypageTab)}>
+              <Link
+                href="/mypage"
+                className={[
+                  "block rounded-lg px-4 py-3 text-sm font-medium transition-colors",
+                  mypageTab
+                    ? "border border-border bg-secondary text-foreground"
+                    : "text-muted-foreground hover:bg-secondary/50 hover:text-foreground",
+                ].join(" ")}
+              >
                 마이페이지
               </Link>
             </SheetClose>
-            <SheetClose asChild>
-              <Link href="/titanic" className={sheetLinkClass(pathname === "/titanic")}>
-                타이타닉
-              </Link>
-            </SheetClose>
           </nav>
-
-          <div className="mt-8 flex flex-col gap-2.5 border-t border-border pt-6">
-            <SheetClose asChild>
-              <Link
-                href="/login"
-                className={`w-full ${headerActionClass("login", pathname === "/login")}`}
-              >
-                <LogIn className="h-4 w-4 shrink-0" aria-hidden />
-                로그인
-              </Link>
-            </SheetClose>
-            <SheetClose asChild>
-              <Link href="/signup" className={`w-full ${headerActionClass("signup")}`}>
-                <UserPlus className="h-4 w-4 shrink-0" aria-hidden />
-                회원가입
-              </Link>
-            </SheetClose>
-          </div>
         </SheetContent>
       </Sheet>
     </header>

@@ -5,6 +5,7 @@ type SignupBody = {
   password?: string
   email?: string
   nickname?: string
+  role?: "user" | "admin"
 }
 
 function errorFromFastAPI(body: unknown, fallback: string): string {
@@ -39,7 +40,13 @@ export async function POST(req: Request) {
     const res = await fetch(`${backendBase}/signup`, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ userId, password, email, nickname }),
+      body: JSON.stringify({
+        userId,
+        password,
+        email,
+        nickname,
+        role: body.role === "admin" ? "admin" : "user",
+      }),
     })
 
     const data: unknown = await res.json().catch(() => ({}))

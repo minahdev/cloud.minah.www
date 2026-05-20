@@ -1,146 +1,384 @@
 "use client"
 
 import { useRouter } from "next/navigation"
-import { FormEvent, useState } from "react"
+import { type FormEvent, useRef, useState } from "react"
+import { Shield, User } from "lucide-react"
 
-import { setLoggedInUserId } from "@/lib/auth-session"
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
+import { setLoggedInUser } from "@/lib/auth-session"
+import { cn } from "@/lib/utils"
 
 const inputClass =
   "w-full bg-secondary border border-border rounded-xl px-4 py-3 text-sm text-foreground placeholder:text-muted-foreground focus:outline-none focus:border-primary/50"
 
-export default function SignupPage() {
+type SignupRole = "user" | "admin"
+
+type IdCheckStatus = "idle" | "checking" | "available" | "taken"
+
+type SignupUiState = {
+  submitting: boolean
+  error: string | null
+  idCheckStatus: IdCheckStatus
+  idCheckMessage: string | null
+  verifiedUserId: string | null
+}
+
+const initialUiState: SignupUiState = {
+  submitting: false,
+  error: null,
+  idCheckStatus: "idle",
+  idCheckMessage: null,
+  verifiedUserId: null,
+}
+
+function SignupFormPanel({
+  role,
+  title,
+  description,
+  submitLabel,
+}: {
+  role: SignupRole
+  title: string
+  description: string
+  submitLabel: string
+}) {
   const router = useRouter()
-  const [submitting, setSubmitting] = useState(false)
-  const [error, setError] = useState<string | null>(null)
+  const formRef = useRef<HTMLFormElement>(null)
+  const [state, setState] = useState<SignupUiState>(initialUiState)
 
-  async function onSubmit(e: FormEvent<HTMLFormElement>) {
-    e.preventDefault()
-    setError(null)
+  const resetIdCheck = () => {
+    setState((prev) => ({
+      ...prev,
+      idCheckStatus: "idle",
+      idCheckMessage: null,
+      verifiedUserId: null,
+    }))
+  }
 
-    const form = e.currentTarget
-    const data = new FormData(form)
-    const userId = String(data.get("userId") ?? "").trim()
-    const password = String(data.get("password") ?? "")
-    const email = String(data.get("email") ?? "").trim()
-    const nickname = String(data.get("nickname") ?? "").trim()
+  const handleCheckUserId = async () => {
+    const form = formRef.current
+    if (!form) return
 
-    setSubmitting(true)
+    const userId = String(new FormData(form).get("userId") ?? "").trim()
+    if (!userId) {
+      setState((prev) => ({
+        ...prev,
+        idCheckStatus: "idle",
+        idCheckMessage: "아이디를 입력한 뒤 중복 확인을 해 주세요.",
+        verifiedUserId: null,
+      }))
+      return
+    }
+
+    setState((prev) => ({
+      ...prev,
+      error: null,
+      idCheckStatus: "checking",
+      idCheckMessage: null,
+      verifiedUserId: null,
+    }))
+
     try {
-      const res = await fetch("/api/signup", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ userId, password, email, nickname }),
-      })
+      const res = await fetch(`/api/signup/check-userid?userId=${encodeURIComponent(userId)}`)
       const json = (await res.json()) as {
+        available?: boolean
         message?: string
-        userId?: string
-        email?: string
-        nickname?: string
         error?: string
       }
 
       if (!res.ok) {
-        setError(json.error ?? "회원가입에 실패했습니다.")
+        setState((prev) => ({
+          ...prev,
+          idCheckStatus: "idle",
+          idCheckMessage: json.error ?? "아이디 확인에 실패했습니다.",
+          verifiedUserId: null,
+        }))
         return
       }
 
-      setLoggedInUserId(json.userId ?? userId)
-      router.push("/mypage")
+      if (json.available) {
+        setState((prev) => ({
+          ...prev,
+          idCheckStatus: "available",
+          idCheckMessage: json.message ?? "사용 가능한 아이디입니다.",
+          verifiedUserId: userId,
+        }))
+      } else {
+        setState((prev) => ({
+          ...prev,
+          idCheckStatus: "taken",
+          idCheckMessage: json.message ?? "이미 사용 중인 아이디입니다.",
+          verifiedUserId: null,
+        }))
+      }
     } catch {
-      setError("서버에 연결할 수 없습니다. 백엔드(uvicorn) 실행 여부를 확인하세요.")
-    } finally {
-      setSubmitting(false)
+      setState((prev) => ({
+        ...prev,
+        idCheckStatus: "idle",
+        idCheckMessage: "서버에 연결할 수 없습니다.",
+        verifiedUserId: null,
+      }))
     }
   }
 
+  const handleSignup = async (e: FormEvent<HTMLFormElement>) => {
+    e.preventDefault()
+    setState((prev) => ({ ...prev, error: null, submitting: true }))
+
+    const formData = new FormData(e.currentTarget)
+    const entries = Object.fromEntries(formData.entries())
+    const formProps = {
+      userId: String(entries.userId ?? "").trim(),
+      password: String(entries.password ?? ""),
+      passwordConfirm: String(entries.passwordConfirm ?? ""),
+      email: String(entries.email ?? "").trim(),
+      nickname: String(entries.nickname ?? "").trim(),
+    }
+
+    if (state.verifiedUserId !== formProps.userId) {
+      setState((prev) => ({
+        ...prev,
+        submitting: false,
+        error: "아이디 중복 확인을 완료해 주세요.",
+      }))
+      return
+    }
+
+    if (formProps.password !== formProps.passwordConfirm) {
+      setState((prev) => ({
+        ...prev,
+        submitting: false,
+        error: "비밀번호가 일치하지 않습니다.",
+      }))
+      return
+    }
+
+    if (formProps.password.length < 4) {
+      setState((prev) => ({
+        ...prev,
+        submitting: false,
+        error: "비밀번호를 4자 이상 입력해 주세요.",
+      }))
+      return
+    }
+
+    try {
+      const res = await fetch("/api/signup", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          userId: formProps.userId,
+          password: formProps.password,
+          email: formProps.email,
+          nickname: formProps.nickname,
+          role,
+        }),
+      })
+      const json = (await res.json()) as {
+        message?: string
+        userId?: string
+        role?: string
+        error?: string
+      }
+
+      if (!res.ok) {
+        setState((prev) => ({
+          ...prev,
+          submitting: false,
+          error: json.error ?? "회원가입에 실패했습니다.",
+        }))
+        return
+      }
+
+      const userId = json.userId ?? formProps.userId
+      const userRole = json.role === "admin" ? "admin" : "user"
+      setLoggedInUser(userId, userRole)
+      router.push(role === "admin" ? "/notices" : "/mypage")
+    } catch {
+      setState((prev) => ({
+        ...prev,
+        submitting: false,
+        error: "서버에 연결할 수 없습니다. 백엔드(uvicorn) 실행 여부를 확인하세요.",
+      }))
+    }
+  }
+
+  const { submitting, error, idCheckStatus, idCheckMessage } = state
+  const idCheckBusy = idCheckStatus === "checking"
+
   return (
-    <div className="pt-28 md:pt-32 pb-16">
-      <div className="container mx-auto px-6 max-w-md">
-        <div className="text-center mb-8">
-          <h1 className="text-3xl font-bold text-foreground mb-2">회원가입</h1>
-          <p className="text-muted-foreground">Pace와 함께 헬스케어의 미래를 만들어가세요</p>
+    <div>
+      <h2 className="text-lg font-semibold text-foreground">{title}</h2>
+      <p className="mt-1 text-sm text-muted-foreground">{description}</p>
+
+      <form ref={formRef} className="mt-5 space-y-4" onSubmit={handleSignup}>
+        <input type="hidden" name="role" value={role} />
+
+        <div>
+          <label htmlFor={`signup-user-id-${role}`} className="mb-2 block text-sm font-medium text-foreground">
+            아이디
+          </label>
+          <div className="flex gap-2">
+            <input
+              type="text"
+              id={`signup-user-id-${role}`}
+              name="userId"
+              autoComplete="username"
+              required
+              disabled={submitting || idCheckBusy}
+              className={inputClass}
+              placeholder={role === "admin" ? "admin_id" : "pace_user"}
+              onInput={resetIdCheck}
+            />
+            <button
+              type="button"
+              onClick={handleCheckUserId}
+              disabled={submitting || idCheckBusy}
+              className="shrink-0 rounded-xl border border-primary/50 bg-primary/10 px-4 py-3 text-sm font-semibold text-primary transition-colors hover:bg-primary/20 disabled:opacity-60"
+            >
+              {idCheckBusy ? "확인 중…" : "중복 확인"}
+            </button>
+          </div>
+          {idCheckMessage ? (
+            <p
+              className={cn(
+                "mt-2 text-sm",
+                idCheckStatus === "available" ? "text-primary" : "text-destructive",
+              )}
+              role="status"
+            >
+              {idCheckMessage}
+            </p>
+          ) : null}
         </div>
 
-        <div className="bg-card border border-border rounded-2xl p-6">
-          <form className="space-y-4" onSubmit={onSubmit}>
-            <div>
-              <label htmlFor="signup-user-id" className="block text-sm font-medium text-foreground mb-2">
-                아이디
-              </label>
-              <input
-                type="text"
-                id="signup-user-id"
-                name="userId"
-                autoComplete="username"
-                required
-                disabled={submitting}
-                className={inputClass}
-                placeholder="pace_user"
+        <div>
+          <label htmlFor={`signup-password-${role}`} className="mb-2 block text-sm font-medium text-foreground">
+            비밀번호
+          </label>
+          <input
+            type="password"
+            id={`signup-password-${role}`}
+            name="password"
+            autoComplete="new-password"
+            required
+            minLength={4}
+            disabled={submitting}
+            className={inputClass}
+            placeholder="••••••••"
+          />
+        </div>
+
+        <div>
+          <label
+            htmlFor={`signup-password-confirm-${role}`}
+            className="mb-2 block text-sm font-medium text-foreground"
+          >
+            비밀번호 확인
+          </label>
+          <input
+            type="password"
+            id={`signup-password-confirm-${role}`}
+            name="passwordConfirm"
+            autoComplete="new-password"
+            required
+            minLength={4}
+            disabled={submitting}
+            className={inputClass}
+            placeholder="비밀번호를 다시 입력"
+          />
+        </div>
+
+        <div>
+          <label htmlFor={`signup-email-${role}`} className="mb-2 block text-sm font-medium text-foreground">
+            이메일
+          </label>
+          <input
+            type="email"
+            id={`signup-email-${role}`}
+            name="email"
+            autoComplete="email"
+            required
+            disabled={submitting}
+            className={inputClass}
+            placeholder="example@pace.dev"
+          />
+        </div>
+
+        <div>
+          <label htmlFor={`signup-nickname-${role}`} className="mb-2 block text-sm font-medium text-foreground">
+            닉네임
+          </label>
+          <input
+            type="text"
+            id={`signup-nickname-${role}`}
+            name="nickname"
+            autoComplete="nickname"
+            required
+            disabled={submitting}
+            className={inputClass}
+            placeholder={role === "admin" ? "관리자" : "민아"}
+          />
+        </div>
+
+        {error ? (
+          <p className="text-sm text-destructive" role="alert">
+            {error}
+          </p>
+        ) : null}
+
+        <button
+          type="submit"
+          disabled={submitting || idCheckBusy}
+          className="w-full rounded-xl bg-primary py-3 font-medium text-primary-foreground transition-colors hover:bg-primary/90 disabled:opacity-60"
+        >
+          {submitting ? "처리 중…" : submitLabel}
+        </button>
+      </form>
+    </div>
+  )
+}
+
+export default function SignupPage() {
+  return (
+    <div className="pb-16 pt-28 md:pt-32">
+      <div className="container mx-auto max-w-md px-6">
+        <div className="mb-8 text-center">
+          <h1 className="mb-2 text-3xl font-bold text-foreground">회원가입</h1>
+          <p className="text-muted-foreground">일반 사용자 또는 관리자 계정을 선택해 가입하세요</p>
+        </div>
+
+        <div className="rounded-2xl border border-border bg-card p-6">
+          <Tabs defaultValue="user" className="w-full">
+            <TabsList className="mb-6 grid h-auto w-full grid-cols-2 gap-1 p-1">
+              <TabsTrigger value="user" className="gap-1.5 py-2.5">
+                <User className="h-4 w-4" aria-hidden />
+                사용자
+              </TabsTrigger>
+              <TabsTrigger value="admin" className="gap-1.5 py-2.5">
+                <Shield className="h-4 w-4" aria-hidden />
+                관리자
+              </TabsTrigger>
+            </TabsList>
+
+            <TabsContent value="user">
+              <SignupFormPanel
+                role="user"
+                title="사용자 가입"
+                description="훈련·분석·커뮤니티 등 일반 기능을 이용합니다."
+                submitLabel="사용자로 가입하기"
               />
-            </div>
+            </TabsContent>
 
-            <div>
-              <label htmlFor="signup-password" className="block text-sm font-medium text-foreground mb-2">
-                비밀번호
-              </label>
-              <input
-                type="password"
-                id="signup-password"
-                name="password"
-                autoComplete="new-password"
-                required
-                disabled={submitting}
-                className={inputClass}
-                placeholder="••••••••"
+            <TabsContent value="admin">
+              <SignupFormPanel
+                role="admin"
+                title="관리자 가입"
+                description="공지사항 등록·관리 권한이 부여됩니다. 가입 후 공지사항 탭에서 확인하세요."
+                submitLabel="관리자로 가입하기"
               />
-            </div>
-
-            <div>
-              <label htmlFor="signup-email" className="block text-sm font-medium text-foreground mb-2">
-                이메일
-              </label>
-              <input
-                type="email"
-                id="signup-email"
-                name="email"
-                autoComplete="email"
-                required
-                disabled={submitting}
-                className={inputClass}
-                placeholder="example@pace.dev"
-              />
-            </div>
-
-            <div>
-              <label htmlFor="signup-nickname" className="block text-sm font-medium text-foreground mb-2">
-                닉네임
-              </label>
-              <input
-                type="text"
-                id="signup-nickname"
-                name="nickname"
-                autoComplete="nickname"
-                required
-                disabled={submitting}
-                className={inputClass}
-                placeholder="민아"
-              />
-            </div>
-
-            {error && (
-              <p className="text-sm text-destructive" role="alert">
-                {error}
-              </p>
-            )}
-
-            <button
-              type="submit"
-              disabled={submitting}
-              className="w-full bg-primary text-primary-foreground py-3 rounded-xl font-medium hover:bg-primary/90 transition-colors disabled:opacity-60"
-            >
-              {submitting ? "처리 중…" : "가입하기"}
-            </button>
-          </form>
+            </TabsContent>
+          </Tabs>
         </div>
       </div>
     </div>
