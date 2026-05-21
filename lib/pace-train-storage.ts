@@ -1,6 +1,33 @@
 /** 브라우저에 저장되는 일일 훈련 로그 (분석 탭 차트용) */
 
+import type { FoodNutritionPer100g } from "@/lib/pace-custom-foods-storage"
+
 export const PACE_TRAIN_LOGS_KEY = "pace-train-daily-logs"
+
+export type DietFoodEntry = {
+  foodId: string
+  name: string
+  grams: number
+  kcalPer100g: number
+  kcal: number
+  /** 1회 섭취량 기준 영양소 (있을 때) */
+  nutrition?: FoodNutritionPer100g
+  isCustom?: boolean
+}
+
+export type DietMeal = {
+  note: string
+  foods: DietFoodEntry[]
+}
+
+export type TrainDiet = {
+  breakfast: DietMeal
+  lunch: DietMeal
+  dinner: DietMeal
+  snack: DietMeal
+  waterMl: number | null
+  supplements: string
+}
 
 export type TrainDailyLog = {
   date: string
@@ -8,16 +35,104 @@ export type TrainDailyLog = {
   /** 오늘 한 운동 — 자유 서술 */
   workout: string
   weightKg: number | null
-  diet: {
-    breakfast: string
-    lunch: string
-    dinner: string
-    snack: string
-    waterMl: number | null
-    supplements: string
-  }
+  diet: TrainDiet
   memo: string
   exerciseMinutes: number | null
+}
+
+export function emptyDietMeal(): DietMeal {
+  return { note: "", foods: [] }
+}
+
+export function emptyDiet(): TrainDiet {
+  return {
+    breakfast: emptyDietMeal(),
+    lunch: emptyDietMeal(),
+    dinner: emptyDietMeal(),
+    snack: emptyDietMeal(),
+    waterMl: null,
+    supplements: "",
+  }
+}
+
+export function mealKcal(meal: DietMeal): number {
+  return meal.foods.reduce((sum, f) => sum + f.kcal, 0)
+}
+
+export function dietTotalKcal(diet: TrainDiet): number {
+  return (
+    mealKcal(diet.breakfast) +
+    mealKcal(diet.lunch) +
+    mealKcal(diet.dinner) +
+    mealKcal(diet.snack)
+  )
+}
+
+export function mealHasContent(meal: DietMeal): boolean {
+  return Boolean(meal.note.trim()) || meal.foods.length > 0
+}
+
+function normalizeNutrition(raw: unknown): FoodNutritionPer100g | undefined {
+  if (raw === null || typeof raw !== "object") return undefined
+  const n = raw as Record<string, unknown>
+  const num = (k: string) => {
+    const v = n[k]
+    if (v === null || v === undefined || v === "") return null
+    const x = typeof v === "number" ? v : Number(v)
+    return Number.isFinite(x) ? x : null
+  }
+  const hasAny =
+    num("proteinG") != null ||
+    num("carbsG") != null ||
+    num("fatG") != null ||
+    num("sodiumMg") != null ||
+    num("sugarG") != null ||
+    num("fiberG") != null
+  if (!hasAny) return undefined
+  return {
+    proteinG: num("proteinG"),
+    carbsG: num("carbsG"),
+    fatG: num("fatG"),
+    sodiumMg: num("sodiumMg"),
+    sugarG: num("sugarG"),
+    fiberG: num("fiberG"),
+  }
+}
+
+function normalizeFoodEntry(raw: unknown): DietFoodEntry | null {
+  if (raw === null || typeof raw !== "object") return null
+  const o = raw as Record<string, unknown>
+  if (typeof o.foodId !== "string" || typeof o.name !== "string") return null
+  const grams = typeof o.grams === "number" ? o.grams : Number(o.grams)
+  const kcalPer100g = typeof o.kcalPer100g === "number" ? o.kcalPer100g : Number(o.kcalPer100g)
+  const kcal = typeof o.kcal === "number" ? o.kcal : Number(o.kcal)
+  if (!Number.isFinite(grams) || grams <= 0) return null
+  if (!Number.isFinite(kcalPer100g)) return null
+  const nutrition = normalizeNutrition(o.nutrition)
+  return {
+    foodId: o.foodId,
+    name: o.name,
+    grams: Math.round(grams),
+    kcalPer100g,
+    kcal: Number.isFinite(kcal) ? Math.round(kcal) : Math.round((kcalPer100g * grams) / 100),
+    nutrition,
+    isCustom: o.isCustom === true,
+  }
+}
+
+function normalizeMeal(raw: unknown): DietMeal {
+  if (typeof raw === "string") {
+    return { note: raw, foods: [] }
+  }
+  if (raw === null || typeof raw !== "object") return emptyDietMeal()
+  const o = raw as Record<string, unknown>
+  const foods = Array.isArray(o.foods)
+    ? o.foods.map(normalizeFoodEntry).filter((f): f is DietFoodEntry => f !== null)
+    : []
+  return {
+    note: typeof o.note === "string" ? o.note : "",
+    foods,
+  }
 }
 
 export function trainLogTodayKey(): string {
@@ -52,7 +167,7 @@ function normalizeWorkout(raw: unknown): string {
 function normalizeLog(row: unknown): TrainDailyLog | null {
   if (row === null || typeof row !== "object") return null
   const o = row as Record<string, unknown>
-  const diet = o.diet as Record<string, unknown> | undefined
+  const dietRaw = o.diet as Record<string, unknown> | undefined
   if (typeof o.date !== "string") return null
 
   const muscles = Array.isArray(o.muscles)
@@ -65,15 +180,15 @@ function normalizeLog(row: unknown): TrainDailyLog | null {
     workout: normalizeWorkout(o.workout),
     weightKg: o.weightKg === null || typeof o.weightKg === "number" ? (o.weightKg as number | null) : null,
     diet: {
-      breakfast: typeof diet?.breakfast === "string" ? diet.breakfast : "",
-      lunch: typeof diet?.lunch === "string" ? diet.lunch : "",
-      dinner: typeof diet?.dinner === "string" ? diet.dinner : "",
-      snack: typeof diet?.snack === "string" ? diet.snack : "",
+      breakfast: normalizeMeal(dietRaw?.breakfast),
+      lunch: normalizeMeal(dietRaw?.lunch),
+      dinner: normalizeMeal(dietRaw?.dinner),
+      snack: normalizeMeal(dietRaw?.snack),
       waterMl:
-        diet?.waterMl === null || typeof diet?.waterMl === "number"
-          ? (diet.waterMl as number | null)
+        dietRaw?.waterMl === null || typeof dietRaw?.waterMl === "number"
+          ? (dietRaw.waterMl as number | null)
           : null,
-      supplements: typeof diet?.supplements === "string" ? diet.supplements : "",
+      supplements: typeof dietRaw?.supplements === "string" ? dietRaw.supplements : "",
     },
     memo: typeof o.memo === "string" ? o.memo : "",
     exerciseMinutes:
@@ -105,7 +220,7 @@ export function saveTodayTrainLog(fields: {
   muscles: string[]
   workout: string
   weightKg: number | null
-  diet: TrainDailyLog["diet"]
+  diet: TrainDiet
   memo: string
   exerciseMinutes: number | null
 }): void {
@@ -128,4 +243,15 @@ export function saveTodayTrainLog(fields: {
 
 export function hasWorkoutActivity(log: TrainDailyLog): boolean {
   return Boolean(log.workout.trim()) || log.muscles.length > 0
+}
+
+export function dietHasContent(diet: TrainDiet): boolean {
+  return (
+    mealHasContent(diet.breakfast) ||
+    mealHasContent(diet.lunch) ||
+    mealHasContent(diet.dinner) ||
+    mealHasContent(diet.snack) ||
+    diet.waterMl != null ||
+    Boolean(diet.supplements.trim())
+  )
 }

@@ -12,9 +12,8 @@ const navItems = [
   { href: "/train", label: "훈련" },
   { href: "/analytics", label: "분석" },
   { href: "/community", label: "커뮤니티" },
-  { href: "/calories", label: "칼로리 검색" },
   { href: "/notices", label: "공지사항" },
-  { href: "/titanic", label: "타이타닉" },
+  { href: "/titanic", label: "수업용" },
 ]
 
 function navPillClass(active: boolean) {

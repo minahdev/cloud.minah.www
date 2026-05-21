@@ -96,7 +96,7 @@ export function GeminiChat({ className }: { className?: string }) {
         className,
       )}
     >
-      <div className="flex shrink-0 flex-wrap items-center gap-2 border-b border-border/60 px-4 py-3">
+      <div className="flex shrink-0 flex-wrap items-center justify-center gap-2 border-b border-border/60 px-4 py-3 text-center">
         <Sparkles className="size-4 shrink-0 text-primary" aria-hidden />
         <span className="text-sm font-medium text-foreground">Gemini</span>
         <span className="text-xs text-muted-foreground">· Pace 홈에서 바로 질문해 보세요</span>

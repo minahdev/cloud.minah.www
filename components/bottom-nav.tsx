@@ -30,7 +30,7 @@ const bottomNavItems: BottomNavLinkItem[] = [
   { href: "/analytics", label: "분석", Icon: BarChart3 },
   { href: "/community", label: "커뮤니티", Icon: Users },
   { href: "/notices", label: "공지", Icon: Megaphone },
-  { href: "/titanic", label: "타이타닉", Icon: Ship },
+  { href: "/titanic", label: "수업용", Icon: Ship },
 ]
 
 function isActivePath(pathname: string, href: string) {

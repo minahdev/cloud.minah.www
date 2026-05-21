@@ -18,11 +18,18 @@ import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
 import { Calendar } from "@/components/ui/calendar"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
+import { formatNutritionBrief, hasNutritionData } from "@/lib/format-nutrition"
 import {
+  dietHasContent,
+  dietTotalKcal,
   hasWorkoutActivity,
   loadTrainLogs,
+  mealHasContent,
+  mealKcal,
   trainLogTodayKey,
+  type DietMeal,
   type TrainDailyLog,
+  type TrainDiet,
 } from "@/lib/pace-train-storage"
 
 function dateToKey(d: Date): string {
@@ -33,14 +40,84 @@ function dateToKey(d: Date): string {
 }
 
 function hasSavedRecord(log: TrainDailyLog): boolean {
-  const dietFilled =
-    Boolean(log.diet.breakfast.trim()) ||
-    Boolean(log.diet.lunch.trim()) ||
-    Boolean(log.diet.dinner.trim()) ||
-    Boolean(log.diet.snack.trim()) ||
-    log.diet.waterMl != null ||
-    Boolean(log.diet.supplements.trim())
-  return hasWorkoutActivity(log) || log.weightKg != null || dietFilled || Boolean(log.memo.trim())
+  return (
+    hasWorkoutActivity(log) ||
+    log.weightKg != null ||
+    dietHasContent(log.diet) ||
+    Boolean(log.memo.trim())
+  )
+}
+
+function MealDetail({ label, meal }: { label: string; meal: DietMeal }) {
+  if (!mealHasContent(meal)) return null
+  const kcal = mealKcal(meal)
+  return (
+    <li className="space-y-1">
+      <div className="flex flex-wrap items-baseline justify-between gap-2">
+        <span className="font-medium text-foreground">{label}</span>
+        {kcal > 0 ? (
+          <span className="text-xs font-semibold tabular-nums text-primary">{kcal.toLocaleString()} kcal</span>
+        ) : null}
+      </div>
+      {meal.foods.length > 0 ? (
+        <ul className="ml-2 space-y-1 text-xs text-muted-foreground">
+          {meal.foods.map((f, i) => (
+            <li key={`${f.foodId}-${i}`}>
+              <span>
+                {f.name} {f.grams}g — {f.kcal.toLocaleString()} kcal
+                {f.isCustom ? " (직접등록)" : ""}
+              </span>
+              {hasNutritionData(f.nutrition) ? (
+                <p className="mt-0.5 text-[10px]">{formatNutritionBrief(f.nutrition!)}</p>
+              ) : null}
+            </li>
+          ))}
+        </ul>
+      ) : null}
+      {meal.note.trim() ? <p className="text-xs text-foreground/90">{meal.note}</p> : null}
+    </li>
+  )
+}
+
+function DietDetail({ diet }: { diet: TrainDiet }) {
+  const total = dietTotalKcal(diet)
+  const rows = [
+    { label: "아침", meal: diet.breakfast },
+    { label: "점심", meal: diet.lunch },
+    { label: "저녁", meal: diet.dinner },
+    { label: "간식", meal: diet.snack },
+  ]
+
+  return (
+    <div>
+      {total > 0 ? (
+        <p className="mb-2 text-sm font-semibold text-primary tabular-nums">
+          식단 합계 {total.toLocaleString()} kcal
+        </p>
+      ) : null}
+      <ul className="space-y-2.5 rounded-lg border border-border/60 bg-secondary/20 px-3 py-2.5">
+        {rows
+          .filter((row) => mealHasContent(row.meal))
+          .map((row) => (
+            <MealDetail key={row.label} label={row.label} meal={row.meal} />
+          ))}
+        {diet.waterMl != null ? (
+          <li>
+            <span className="font-medium text-foreground">물</span>
+            <span className="text-muted-foreground"> — </span>
+            {diet.waterMl} ml
+          </li>
+        ) : null}
+        {diet.supplements.trim() ? (
+          <li>
+            <span className="font-medium text-foreground">영양제</span>
+            <span className="text-muted-foreground"> — </span>
+            {diet.supplements}
+          </li>
+        ) : null}
+      </ul>
+    </div>
+  )
 }
 
 function TrainDayDetail({ log }: { log: TrainDailyLog | null }) {
@@ -53,13 +130,6 @@ function TrainDayDetail({ log }: { log: TrainDailyLog | null }) {
       </p>
     )
   }
-
-  const dietLines = [
-    { label: "아침", value: log.diet.breakfast },
-    { label: "점심", value: log.diet.lunch },
-    { label: "저녁", value: log.diet.dinner },
-    { label: "간식", value: log.diet.snack },
-  ].filter((row) => row.value.trim())
 
   return (
     <div className="space-y-4 text-sm">
@@ -95,35 +165,13 @@ function TrainDayDetail({ log }: { log: TrainDailyLog | null }) {
         </p>
       ) : null}
 
-      {dietLines.length > 0 || log.diet.waterMl != null || log.diet.supplements.trim() ? (
+      {dietHasContent(log.diet) ? (
         <div>
           <p className="mb-1.5 flex items-center gap-1.5 text-xs font-medium text-muted-foreground">
             <UtensilsCrossed className="h-3.5 w-3.5" aria-hidden />
             식단
           </p>
-          <ul className="space-y-1.5 rounded-lg border border-border/60 bg-secondary/20 px-3 py-2.5">
-            {dietLines.map((row) => (
-              <li key={row.label}>
-                <span className="font-medium text-foreground">{row.label}</span>
-                <span className="text-muted-foreground"> — </span>
-                <span className="text-foreground">{row.value}</span>
-              </li>
-            ))}
-            {log.diet.waterMl != null ? (
-              <li>
-                <span className="font-medium text-foreground">물</span>
-                <span className="text-muted-foreground"> — </span>
-                {log.diet.waterMl} ml
-              </li>
-            ) : null}
-            {log.diet.supplements.trim() ? (
-              <li>
-                <span className="font-medium text-foreground">영양제</span>
-                <span className="text-muted-foreground"> — </span>
-                {log.diet.supplements}
-              </li>
-            ) : null}
-          </ul>
+          <DietDetail diet={log.diet} />
         </div>
       ) : null}
 

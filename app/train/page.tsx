@@ -8,8 +8,12 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { Textarea } from "@/components/ui/textarea"
+import { DietMealTracker } from "@/components/diet-meal-tracker"
 import {
+  dietTotalKcal,
+  emptyDiet,
   type TrainDailyLog,
+  type TrainDiet,
   getTodayTrainLog,
   saveTodayTrainLog,
 } from "@/lib/pace-train-storage"
@@ -41,6 +45,7 @@ export default function TrainPage() {
     muscles: [],
   })
   const [initial, setInitial] = useState<TrainDailyLog | null | undefined>(undefined)
+  const [diet, setDiet] = useState<TrainDiet>(emptyDiet)
   const [formKey, setFormKey] = useState(0)
 
   useEffect(() => {
@@ -48,6 +53,7 @@ export default function TrainPage() {
     setInitial(log)
     if (log) {
       setUi((prev) => ({ ...prev, muscles: log.muscles }))
+      setDiet(log.diet)
     }
   }, [])
 
@@ -74,10 +80,6 @@ export default function TrainPage() {
       weightKg = n
     }
 
-    const dietBreakfast = String(formData.get("dietBreakfast") ?? "").trim()
-    const dietLunch = String(formData.get("dietLunch") ?? "").trim()
-    const dietDinner = String(formData.get("dietDinner") ?? "").trim()
-    const dietSnack = String(formData.get("dietSnack") ?? "").trim()
     const waterMlRaw = String(formData.get("waterMl") ?? "").trim()
     const supplements = String(formData.get("supplements") ?? "").trim()
 
@@ -87,21 +89,21 @@ export default function TrainPage() {
       if (!Number.isNaN(w) && w >= 0 && w <= 20000) waterMl = w
     }
 
+    const dietToSave: TrainDiet = {
+      ...diet,
+      waterMl,
+      supplements,
+    }
+
     saveTodayTrainLog({
       muscles: ui.muscles,
       workout,
       weightKg,
-      diet: {
-        breakfast: dietBreakfast,
-        lunch: dietLunch,
-        dinner: dietDinner,
-        snack: dietSnack,
-        waterMl,
-        supplements,
-      },
+      diet: dietToSave,
       memo,
       exerciseMinutes: null,
     })
+    setDiet(dietToSave)
 
     setUi((prev) => ({
       ...prev,
@@ -111,6 +113,8 @@ export default function TrainPage() {
     setInitial(getTodayTrainLog())
     setFormKey((k) => k + 1)
   }
+
+  const totalDietKcal = dietTotalKcal(diet)
 
   if (initial === undefined) {
     return (
@@ -270,56 +274,41 @@ export default function TrainPage() {
                   </div>
                   <div>
                     <CardTitle className="text-base">식단</CardTitle>
-                    <CardDescription>끼니·간식·물 섭취 등 메모</CardDescription>
+                    <CardDescription>음식 검색으로 칼로리를 추가하고, 끼니별·총 칼로리를 확인하세요</CardDescription>
                   </div>
                 </div>
               </CardHeader>
               <CardContent className="space-y-4">
-                <div className="grid gap-4 sm:grid-cols-2">
-                  <div className="space-y-1.5">
-                    <Label htmlFor="dietBreakfast">아침</Label>
-                    <Textarea
-                      id="dietBreakfast"
-                      name="dietBreakfast"
-                      defaultValue={initial?.diet?.breakfast ?? ""}
-                      placeholder="예: 오트밀 + 바나나"
-                      rows={2}
-                      className="resize-none"
-                    />
+                {totalDietKcal > 0 ? (
+                  <div className="flex items-center justify-between rounded-xl border border-primary/30 bg-primary/10 px-4 py-3">
+                    <span className="text-sm font-medium text-foreground">오늘 식단 총 칼로리</span>
+                    <span className="text-lg font-bold tabular-nums text-primary">
+                      {totalDietKcal.toLocaleString()} kcal
+                    </span>
                   </div>
-                  <div className="space-y-1.5">
-                    <Label htmlFor="dietLunch">점심</Label>
-                    <Textarea
-                      id="dietLunch"
-                      name="dietLunch"
-                      defaultValue={initial?.diet?.lunch ?? ""}
-                      placeholder="예: 닭가슴살 샐러드"
-                      rows={2}
-                      className="resize-none"
-                    />
-                  </div>
-                  <div className="space-y-1.5">
-                    <Label htmlFor="dietDinner">저녁</Label>
-                    <Textarea
-                      id="dietDinner"
-                      name="dietDinner"
-                      defaultValue={initial?.diet?.dinner ?? ""}
-                      placeholder="예: 현미밥 + 연어"
-                      rows={2}
-                      className="resize-none"
-                    />
-                  </div>
-                  <div className="space-y-1.5">
-                    <Label htmlFor="dietSnack">간식</Label>
-                    <Textarea
-                      id="dietSnack"
-                      name="dietSnack"
-                      defaultValue={initial?.diet?.snack ?? ""}
-                      placeholder="예: 프로틴바, 아메리카노"
-                      rows={2}
-                      className="resize-none"
-                    />
-                  </div>
+                ) : null}
+
+                <div className="grid gap-4 lg:grid-cols-2">
+                  <DietMealTracker
+                    label="아침"
+                    meal={diet.breakfast}
+                    onChange={(breakfast) => setDiet((d) => ({ ...d, breakfast }))}
+                  />
+                  <DietMealTracker
+                    label="점심"
+                    meal={diet.lunch}
+                    onChange={(lunch) => setDiet((d) => ({ ...d, lunch }))}
+                  />
+                  <DietMealTracker
+                    label="저녁"
+                    meal={diet.dinner}
+                    onChange={(dinner) => setDiet((d) => ({ ...d, dinner }))}
+                  />
+                  <DietMealTracker
+                    label="간식"
+                    meal={diet.snack}
+                    onChange={(snack) => setDiet((d) => ({ ...d, snack }))}
+                  />
                 </div>
 
                 <div className="grid gap-4 sm:grid-cols-[minmax(0,1fr)_minmax(0,1fr)]">

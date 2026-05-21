@@ -20,12 +20,15 @@ type CurrentWeatherProps = {
   variant?: "default" | "compact"
   /** 위치 권한 실패 시 표시할 기본 도시 */
   fallbackCity?: string
+  /** 메인 등에서 카드 내용 가운데 정렬 */
+  centered?: boolean
 }
 
 export function CurrentWeather({
   className,
   variant = "default",
   fallbackCity = "Seoul",
+  centered = false,
 }: CurrentWeatherProps) {
   const [weather, setWeather] = useState<WeatherData | null>(null)
   const [loading, setLoading] = useState(true)
@@ -119,29 +122,55 @@ export function CurrentWeather({
       className={cn(
         "rounded-2xl border border-border/60 bg-card/60 shadow-sm backdrop-blur-md",
         compact ? "h-fit px-3 py-2 sm:min-w-[11.5rem]" : "mt-4 px-4 py-3",
+        centered && "text-center",
         className,
       )}
       aria-label="현재 위치 날씨"
     >
-      <div className={cn("flex items-start justify-between gap-2", compact && "gap-1.5")}>
-        <div className="flex min-w-0 items-center gap-1.5">
+      {centered ? (
+        <div className="flex items-center justify-center gap-2">
           <MapPin className={cn("shrink-0 text-primary", compact ? "size-3.5" : "size-4")} aria-hidden />
-          <h2 className={cn("font-medium text-foreground", compact ? "text-xs" : "text-sm")}>
+          <h2 className={cn("font-medium leading-none text-foreground", compact ? "text-xs" : "text-sm")}>
             {compact ? "오늘의 날씨" : "현재 위치 날씨"}
           </h2>
+          <Button
+            type="button"
+            variant="ghost"
+            size="icon"
+            className="size-7 shrink-0 text-muted-foreground"
+            onClick={requestLocation}
+            disabled={loading}
+            aria-label="날씨 새로고침"
+          >
+            <RefreshCw className={cn("size-3.5", loading && "animate-spin")} />
+          </Button>
         </div>
-        <Button
-          type="button"
-          variant="ghost"
-          size="icon"
-          className={cn("shrink-0 text-muted-foreground", compact ? "size-7" : "size-8")}
-          onClick={requestLocation}
-          disabled={loading}
-          aria-label="날씨 새로고침"
+      ) : (
+        <div
+          className={cn(
+            "flex w-full items-center justify-between gap-2",
+            compact && "gap-1.5",
+          )}
         >
-          <RefreshCw className={cn(compact ? "size-3.5" : "size-4", loading && "animate-spin")} />
-        </Button>
-      </div>
+          <div className="flex min-w-0 items-center gap-1.5">
+            <MapPin className={cn("shrink-0 text-primary", compact ? "size-3.5" : "size-4")} aria-hidden />
+            <h2 className={cn("font-medium leading-none text-foreground", compact ? "text-xs" : "text-sm")}>
+              {compact ? "오늘의 날씨" : "현재 위치 날씨"}
+            </h2>
+          </div>
+          <Button
+            type="button"
+            variant="ghost"
+            size="icon"
+            className={cn("shrink-0 text-muted-foreground", compact ? "size-7" : "size-8")}
+            onClick={requestLocation}
+            disabled={loading}
+            aria-label="날씨 새로고침"
+          >
+            <RefreshCw className={cn(compact ? "size-3.5" : "size-4", loading && "animate-spin")} />
+          </Button>
+        </div>
+      )}
 
       {loading && !weather && (
         <div
@@ -171,7 +200,13 @@ export function CurrentWeather({
       )}
 
       {weather && !error && (
-        <div className={cn("flex items-center", compact ? "mt-1.5 gap-1.5" : "mt-3 gap-4")}>
+        <div
+          className={cn(
+            "flex items-center",
+            centered && "justify-center",
+            compact ? "mt-1.5 gap-1.5" : "mt-3 gap-4",
+          )}
+        >
           {iconUrl ? (
             <img
               src={iconUrl}

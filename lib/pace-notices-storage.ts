@@ -14,7 +14,7 @@ const SEED_NOTICES: Notice[] = [
   {
     id: "notice-welcome",
     title: "Pace에 오신 것을 환영합니다",
-    body: "훈련·분석·커뮤니티·칼로리 검색·공지 기능을 이용해 보세요. 문의는 마이페이지 정보를 참고해 주세요.",
+    body: "훈련·분석·커뮤니티·공지 기능을 이용해 보세요. 훈련 탭에서 식단 칼로리도 기록할 수 있습니다.",
     authorId: "pace_admin",
     createdAt: "2026-05-15T09:00:00.000Z",
   },
