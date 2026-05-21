@@ -4,7 +4,7 @@ import Link from "next/link"
 import { useRouter, useSearchParams } from "next/navigation"
 import { Suspense, type FormEvent, useState } from "react"
 
-import { setLoggedInUser } from "@/lib/auth-session"
+import { normalizeUserRole, setLoggedInUser } from "@/lib/auth-session"
 
 const inputClass =
   "w-full bg-secondary border border-border rounded-xl px-4 py-3 text-sm text-foreground placeholder:text-muted-foreground focus:outline-none focus:border-primary/50"
@@ -57,10 +57,7 @@ function LoginForm() {
         return
       }
 
-      setLoggedInUser(
-        json.userId ?? formProps.userId,
-        json.role === "admin" ? "admin" : "user",
-      )
+      setLoggedInUser(json.userId ?? formProps.userId, normalizeUserRole(json.role))
       const from = searchParams.get("from")
       router.push(from?.startsWith("/") ? from : "/")
     } catch {

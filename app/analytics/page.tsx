@@ -1,6 +1,7 @@
 "use client"
 
 import { useEffect, useMemo, useState } from "react"
+import { useRouter } from "next/navigation"
 import { format, parseISO } from "date-fns"
 import { ko } from "date-fns/locale"
 import { CalendarDays, Dumbbell, Scale, UtensilsCrossed } from "lucide-react"
@@ -126,7 +127,7 @@ function TrainDayDetail({ log }: { log: TrainDailyLog | null }) {
       <p className="rounded-lg border border-dashed border-border bg-secondary/25 px-4 py-10 text-center text-sm text-muted-foreground">
         이 날짜에 저장된 훈련 기록이 없습니다.
         <br />
-        훈련 탭에서 기록을 남기면 여기에 표시됩니다.
+        마이페이지 훈련 탭에서 기록을 남기면 여기에 표시됩니다.
       </p>
     )
   }
@@ -187,7 +188,7 @@ function TrainDayDetail({ log }: { log: TrainDailyLog | null }) {
   )
 }
 
-export default function AnalyticsPage() {
+export function AnalyticsPanel({ embedded = false }: { embedded?: boolean }) {
   const [logs, setLogs] = useState<TrainDailyLog[]>([])
   const [selectedDate, setSelectedDate] = useState<Date>(() => new Date())
   const [calendarMonth, setCalendarMonth] = useState<Date>(() => new Date())
@@ -227,18 +228,24 @@ export default function AnalyticsPage() {
   const selectedLabel = format(selectedDate, "yyyy년 M월 d일 (EEE)", { locale: ko })
 
   return (
-    <div className="pb-16 pt-28 md:pt-32">
-      <div className="container mx-auto max-w-5xl px-6">
-        <header className="mb-8">
-          <p className="text-sm font-medium text-primary">Analytics</p>
-          <h1 className="mt-1 text-3xl font-bold tracking-tight text-foreground md:text-4xl">
-            나의 훈련 기록
-          </h1>
-          <p className="mt-2 max-w-2xl text-muted-foreground">
-            훈련 탭에서 저장한 내용을 날짜별로 확인하고, 몸무게 추이는 아래 그래프에서 볼 수
-            있습니다.
+    <div className={embedded ? "pb-4" : "pb-16 pt-28 md:pt-32"}>
+      <div className={embedded ? "mx-auto w-full max-w-5xl" : "container mx-auto max-w-5xl px-6"}>
+        {!embedded ? (
+          <header className="mb-8">
+            <p className="text-sm font-medium text-primary">Analytics</p>
+            <h1 className="mt-1 text-3xl font-bold tracking-tight text-foreground md:text-4xl">
+              나의 훈련 기록
+            </h1>
+            <p className="mt-2 max-w-2xl text-muted-foreground">
+              훈련 탭에서 저장한 내용을 날짜별로 확인하고, 몸무게 추이는 아래 그래프에서 볼 수
+              있습니다.
+            </p>
+          </header>
+        ) : (
+          <p className="mb-6 text-sm text-muted-foreground">
+            저장한 훈련 기록을 날짜별로 확인하고 몸무게 추이를 볼 수 있어요.
           </p>
-        </header>
+        )}
 
         <div className="grid gap-6 lg:grid-cols-[minmax(0,340px)_minmax(0,1fr)] lg:items-start">
           <Card className="border-border/80 shadow-sm">
@@ -299,13 +306,13 @@ export default function AnalyticsPage() {
           <CardHeader>
             <CardTitle className="text-lg">몸무게 추이</CardTitle>
             <CardDescription>
-              훈련 탭에서 입력한 체중만 모아 표시합니다. 기록이 있는 날짜만 연결됩니다.
+              마이페이지 훈련 탭에서 입력한 체중만 모아 표시합니다. 기록이 있는 날짜만 연결됩니다.
             </CardDescription>
           </CardHeader>
           <CardContent>
             {!hasWeight ? (
               <p className="rounded-lg border border-dashed border-border bg-secondary/30 py-12 text-center text-sm text-muted-foreground">
-                아직 몸무게 데이터가 없습니다. 훈련 탭에서 체중을 입력해 보세요.
+                아직 몸무게 데이터가 없습니다. 마이페이지 훈련 탭에서 체중을 입력해 보세요.
               </p>
             ) : (
               <div className="h-[300px] w-full min-w-0">
@@ -354,4 +361,12 @@ export default function AnalyticsPage() {
       </div>
     </div>
   )
+}
+
+export default function AnalyticsPage() {
+  const router = useRouter()
+  useEffect(() => {
+    router.replace("/mypage?tab=analytics")
+  }, [router])
+  return null
 }

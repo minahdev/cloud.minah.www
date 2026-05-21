@@ -2,15 +2,20 @@
 
 import { useRouter } from "next/navigation"
 import { type ChangeEvent, type FormEvent, useEffect, useMemo, useState } from "react"
-import { Activity, Heart, LogOut, Save, UserRound } from "lucide-react"
+import { Activity, Heart, LogOut, Pencil, Save, UserRound, X } from "lucide-react"
 
-import { clearLoggedInUserId, getLoggedInUserId } from "@/lib/auth-session"
+import { ScheduleAccessSettings } from "@/components/schedule-access-settings"
+import { clearLoggedInUserId, getLoggedInUserId, getLoggedInUserRole } from "@/lib/auth-session"
+import { fetchScheduleAccessStatus } from "@/lib/pace-schedule-access"
 import {
   calcBmi,
   EXPERIENCE_OPTIONS,
   FAVORITE_EXERCISE_OPTIONS,
   fetchMyPageProfileFromApi,
   formatBirthDate,
+  getExperienceLabel,
+  getFavoriteExerciseLabel,
+  getWeeklyGoalLabel,
   isValidBirthDate,
   saveMyPageProfileToApi,
   type ExerciseExperience,
@@ -22,9 +27,24 @@ import {
 const inputClass =
   "w-full bg-secondary border border-border rounded-xl px-4 py-3 text-sm text-foreground placeholder:text-muted-foreground focus:outline-none focus:border-primary/50"
 
-type MyPageState = {
+type ProfileFields = {
+  name: string
+  birthDate: string
+  phone: string
+  heightCm: string
+  weightKg: string
+  favoriteExercise: FavoriteExercise
+  favoriteExerciseOther: string
+  experience: ExerciseExperience
+  weeklyGoal: WeeklyExerciseGoal
+  healthNote: string
+}
+
+type MyPageState = ProfileFields & {
   hydrated: boolean
   userId: string | null
+  hasProfile: boolean
+  editing: boolean
   submitting: boolean
   error: string | null
   savedMessage: string | null
@@ -40,12 +60,26 @@ type MyPageState = {
   healthNote: string
 }
 
-const initialState: MyPageState = {
-  hydrated: false,
-  userId: null,
-  submitting: false,
-  error: null,
-  savedMessage: null,
+function hasProfileData(fields: ProfileFields): boolean {
+  return Boolean(fields.name.trim() && fields.birthDate.trim() && fields.phone.trim())
+}
+
+function pickProfileFields(state: MyPageState): ProfileFields {
+  return {
+    name: state.name,
+    birthDate: state.birthDate,
+    phone: state.phone,
+    heightCm: state.heightCm,
+    weightKg: state.weightKg,
+    favoriteExercise: state.favoriteExercise,
+    favoriteExerciseOther: state.favoriteExerciseOther,
+    experience: state.experience,
+    weeklyGoal: state.weeklyGoal,
+    healthNote: state.healthNote,
+  }
+}
+
+const emptyProfileFields: ProfileFields = {
   name: "",
   birthDate: "",
   phone: "",
@@ -56,6 +90,17 @@ const initialState: MyPageState = {
   experience: "under_1",
   weeklyGoal: "3_4",
   healthNote: "",
+}
+
+const initialState: MyPageState = {
+  hydrated: false,
+  userId: null,
+  hasProfile: false,
+  editing: false,
+  submitting: false,
+  error: null,
+  savedMessage: null,
+  ...emptyProfileFields,
 }
 
 function RadioGroup<T extends string>({
@@ -108,9 +153,25 @@ function RadioGroup<T extends string>({
   )
 }
 
-export function MyPageForm() {
+function ProfileRow({ label, value }: { label: string; value: string }) {
+  return (
+    <div className="rounded-xl border border-border/70 bg-secondary/25 px-4 py-3">
+      <p className="text-xs font-medium text-muted-foreground">{label}</p>
+      <p className="mt-1 text-sm font-medium text-foreground">{value || "—"}</p>
+    </div>
+  )
+}
+
+function isCoachOrAdmin(role: string | null): boolean {
+  return role === "coach" || role === "admin"
+}
+
+export function MyPageForm({ embedded = false }: { embedded?: boolean }) {
   const router = useRouter()
   const [state, setState] = useState<MyPageState>(initialState)
+  const [editSnapshot, setEditSnapshot] = useState<ProfileFields | null>(null)
+  const [scheduleAccessConfigured, setScheduleAccessConfigured] = useState<boolean | null>(null)
+  const coachView = isCoachOrAdmin(getLoggedInUserRole())
 
   function handleLogout() {
     if (!getLoggedInUserId()) {
@@ -146,7 +207,7 @@ export function MyPageForm() {
       try {
         const saved = await fetchMyPageProfileFromApi(id)
         if (saved) {
-          patch({
+          const fields: ProfileFields = {
             name: saved.name,
             birthDate: saved.birthDate,
             phone: saved.phone,
@@ -157,7 +218,15 @@ export function MyPageForm() {
             experience: saved.experience,
             weeklyGoal: saved.weeklyGoal ?? "3_4",
             healthNote: saved.healthNote ?? "",
+          }
+          const profileExists = hasProfileData(fields)
+          patch({
+            ...fields,
+            hasProfile: profileExists,
+            editing: !profileExists,
           })
+        } else {
+          patch({ hasProfile: false, editing: true })
         }
       } catch (err) {
         patch({
@@ -168,6 +237,21 @@ export function MyPageForm() {
       }
     })()
   }, [])
+
+  useEffect(() => {
+    if (!coachView) return
+    let cancelled = false
+    void fetchScheduleAccessStatus()
+      .then(({ configured }) => {
+        if (!cancelled) setScheduleAccessConfigured(configured)
+      })
+      .catch(() => {
+        if (!cancelled) setScheduleAccessConfigured(false)
+      })
+    return () => {
+      cancelled = true
+    }
+  }, [coachView])
 
   const bmi = useMemo(
     () => calcBmi(state.heightCm, state.weightKg),
@@ -211,7 +295,8 @@ export function MyPageForm() {
         weeklyGoal: String(entries.weeklyGoal ?? "3_4") as WeeklyExerciseGoal,
         healthNote: String(entries.healthNote ?? "").trim(),
       })
-      patch({ savedMessage: message })
+      patch({ savedMessage: message, hasProfile: true, editing: false })
+      setEditSnapshot(null)
     } catch (err) {
       patch({
         error: err instanceof Error ? err.message : "저장에 실패했습니다.",
@@ -221,9 +306,25 @@ export function MyPageForm() {
     }
   }
 
+  const startEditing = () => {
+    setEditSnapshot(pickProfileFields(state))
+    patch({ editing: true, error: null, savedMessage: null })
+  }
+
+  const cancelEditing = () => {
+    if (editSnapshot) {
+      patch({ ...editSnapshot, editing: false, error: null, savedMessage: null })
+    } else {
+      patch({ editing: false, error: null, savedMessage: null })
+    }
+    setEditSnapshot(null)
+  }
+
   const {
     hydrated,
     userId,
+    hasProfile,
+    editing,
     submitting,
     error,
     savedMessage,
@@ -245,29 +346,121 @@ export function MyPageForm() {
 
   return (
     <div className="mx-auto w-full max-w-2xl">
-      <div className="mb-8 text-center md:text-left">
-        <div className="mb-3 inline-flex items-center gap-2 rounded-full border border-primary/25 bg-secondary/80 px-3 py-1.5 text-xs font-medium text-foreground/90">
-          <UserRound className="size-3.5 text-primary" aria-hidden />
-          헬스 프로필
+      {!embedded ? (
+        <div className="mb-8 text-center md:text-left">
+          <div className="mb-3 inline-flex items-center gap-2 rounded-full border border-primary/25 bg-secondary/80 px-3 py-1.5 text-xs font-medium text-foreground/90">
+            <UserRound className="size-3.5 text-primary" aria-hidden />
+            헬스 프로필
+          </div>
+          <h1 className="text-3xl font-bold text-foreground md:text-4xl">마이페이지</h1>
+          <p className="mt-2 text-sm text-muted-foreground md:text-base">
+            맞춤 운동·피드백을 위해 기초 신체 정보와 운동 습관을 입력해 주세요. Neon DB에 저장됩니다.
+            {userId ? (
+              <span className="mt-1 block text-xs text-muted-foreground">로그인 아이디: {userId}</span>
+            ) : null}
+          </p>
         </div>
-        <h1 className="text-3xl font-bold text-foreground md:text-4xl">마이페이지</h1>
-        <p className="mt-2 text-sm text-muted-foreground md:text-base">
-          맞춤 운동·피드백을 위해 기초 신체 정보와 운동 습관을 입력해 주세요. Neon DB에 저장됩니다.
+      ) : (
+        <p className="mb-6 text-sm text-muted-foreground">
+          저장된 기초 정보를 확인하고, 수정이 필요할 때만 편집할 수 있어요.
           {userId ? (
-            <span className="mt-1 block text-xs text-muted-foreground">로그인 아이디: {userId}</span>
+            <span className="mt-1 block text-xs">로그인 아이디: {userId}</span>
           ) : null}
         </p>
-      </div>
+      )}
 
-      <form
-        onSubmit={handleSaveProfile}
-        className="space-y-8 rounded-2xl border border-border bg-card/90 p-6 shadow-lg shadow-black/10 backdrop-blur-sm md:p-8"
-      >
+      <div className="space-y-8 rounded-2xl border border-border bg-card/90 p-6 shadow-lg shadow-black/10 backdrop-blur-sm md:p-8">
+        {!editing && hasProfile ? (
+          <>
+            <div className="flex flex-wrap items-center justify-between gap-3">
+              <h2 className="flex items-center gap-2 text-lg font-semibold text-foreground">
+                <UserRound className="size-5 text-primary" aria-hidden />
+                기초 정보
+              </h2>
+              <button
+                type="button"
+                onClick={startEditing}
+                className="inline-flex items-center gap-2 rounded-xl border border-primary/40 bg-primary/10 px-4 py-2 text-sm font-semibold text-primary transition-colors hover:bg-primary/15"
+              >
+                <Pencil className="size-4" aria-hidden />
+                수정
+              </button>
+            </div>
+
+            <section className="space-y-3">
+              <h3 className="text-sm font-medium text-muted-foreground">기본 정보</h3>
+              <div className="grid gap-3 sm:grid-cols-2">
+                <ProfileRow label="이름" value={name} />
+                <ProfileRow label="생년월일" value={formatBirthDate(birthDate)} />
+                <ProfileRow label="전화번호" value={phone} />
+              </div>
+            </section>
+
+            <section className="space-y-3">
+              <h3 className="flex items-center gap-2 text-sm font-medium text-muted-foreground">
+                <Activity className="size-4 text-primary" aria-hidden />
+                신체 정보
+              </h3>
+              <div className="grid gap-3 sm:grid-cols-2">
+                <ProfileRow label="키 (cm)" value={heightCm ? `${heightCm} cm` : ""} />
+                <ProfileRow label="몸무게 (kg)" value={weightKg ? `${weightKg} kg` : ""} />
+              </div>
+              {bmi != null ? (
+                <p className="rounded-xl border border-primary/20 bg-primary/5 px-4 py-3 text-sm text-foreground">
+                  계산된 BMI: <strong className="text-primary">{bmi}</strong>
+                  <span className="ml-2 text-muted-foreground">(참고용)</span>
+                </p>
+              ) : null}
+            </section>
+
+            <section className="space-y-3">
+              <h3 className="text-sm font-medium text-muted-foreground">운동 습관</h3>
+              <div className="grid gap-3 sm:grid-cols-2">
+                <ProfileRow
+                  label="자주 하는 운동"
+                  value={getFavoriteExerciseLabel(favoriteExercise, favoriteExerciseOther)}
+                />
+                <ProfileRow label="운동 경력" value={getExperienceLabel(experience)} />
+                <ProfileRow label="주간 운동 목표" value={getWeeklyGoalLabel(weeklyGoal)} />
+              </div>
+            </section>
+
+            {healthNote.trim() ? (
+              <section className="space-y-3">
+                <h3 className="flex items-center gap-2 text-sm font-medium text-muted-foreground">
+                  <Heart className="size-4 text-primary" aria-hidden />
+                  건강 메모
+                </h3>
+                <p className="whitespace-pre-wrap rounded-xl border border-border/70 bg-secondary/25 px-4 py-3 text-sm text-foreground">
+                  {healthNote}
+                </p>
+              </section>
+            ) : null}
+
+            {savedMessage ? <p className="text-sm text-primary">{savedMessage}</p> : null}
+          </>
+        ) : (
+          <form onSubmit={handleSaveProfile} className="space-y-8">
+            <div className="flex flex-wrap items-center justify-between gap-3">
+              <h2 className="flex items-center gap-2 text-lg font-semibold text-foreground">
+                <UserRound className="size-5 text-primary" aria-hidden />
+                {hasProfile ? "기초 정보 수정" : "기초 정보 등록"}
+              </h2>
+              {hasProfile ? (
+                <button
+                  type="button"
+                  onClick={cancelEditing}
+                  disabled={submitting}
+                  className="inline-flex items-center gap-2 rounded-xl border border-border px-4 py-2 text-sm font-medium text-muted-foreground transition-colors hover:bg-secondary/60 disabled:opacity-60"
+                >
+                  <X className="size-4" aria-hidden />
+                  취소
+                </button>
+              ) : null}
+            </div>
+
         <section className="space-y-4">
-          <h2 className="flex items-center gap-2 text-lg font-semibold text-foreground">
-            <UserRound className="size-5 text-primary" aria-hidden />
-            기본 정보
-          </h2>
+          <h3 className="text-sm font-medium text-muted-foreground">기본 정보</h3>
           <div className="grid gap-4 sm:grid-cols-2">
             <div className="sm:col-span-2">
               <label htmlFor="mypage-name" className="mb-2 block text-sm font-medium text-foreground">
@@ -322,10 +515,10 @@ export function MyPageForm() {
         </section>
 
         <section className="space-y-4">
-          <h2 className="flex items-center gap-2 text-lg font-semibold text-foreground">
-            <Activity className="size-5 text-primary" aria-hidden />
+          <h3 className="flex items-center gap-2 text-sm font-medium text-muted-foreground">
+            <Activity className="size-4 text-primary" aria-hidden />
             신체 정보
-          </h2>
+          </h3>
           <div className="grid gap-4 sm:grid-cols-2">
             <div>
               <label htmlFor="mypage-height" className="mb-2 block text-sm font-medium text-foreground">
@@ -418,10 +611,10 @@ export function MyPageForm() {
         />
 
         <section className="space-y-2">
-          <h2 className="flex items-center gap-2 text-lg font-semibold text-foreground">
-            <Heart className="size-5 text-primary" aria-hidden />
+          <h3 className="flex items-center gap-2 text-sm font-medium text-muted-foreground">
+            <Heart className="size-4 text-primary" aria-hidden />
             건강 메모 (추가)
-          </h2>
+          </h3>
           <p className="text-xs text-muted-foreground">부상 이력, 알레르기, 복용 약 등 AI·코치 참고용 (선택)</p>
           <textarea
             id="mypage-health-note"
@@ -444,9 +637,21 @@ export function MyPageForm() {
           className="inline-flex w-full items-center justify-center gap-2 rounded-xl bg-primary py-3 text-sm font-semibold text-primary-foreground transition-colors hover:bg-primary/90 disabled:opacity-60"
         >
           <Save className="size-4" aria-hidden />
-          {submitting ? "저장 중…" : "프로필 저장"}
+          {submitting ? "저장 중…" : hasProfile ? "변경 사항 저장" : "프로필 저장"}
         </button>
-      </form>
+          </form>
+        )}
+      </div>
+
+      {coachView && scheduleAccessConfigured !== null ? (
+        <div className="mt-8">
+          <ScheduleAccessSettings
+            configured={scheduleAccessConfigured}
+            onConfiguredChange={setScheduleAccessConfigured}
+            className="border-dashed border-primary/30 bg-secondary/20"
+          />
+        </div>
+      ) : null}
 
       <div className="mt-8 border-t border-border/60 pt-6">
         <button

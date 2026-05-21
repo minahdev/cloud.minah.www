@@ -20,9 +20,16 @@ function notifyAuthChange(): void {
   }
 }
 
+/** API·localStorage에 저장할 역할 정규화 */
+export function normalizeUserRole(role?: string | null): string {
+  if (role === "admin") return "admin"
+  if (role === "coach") return "coach"
+  return "user"
+}
+
 export function setLoggedInUser(userId: string, role: string = "user"): void {
   localStorage.setItem(PACE_USER_ID_KEY, userId.trim())
-  localStorage.setItem(PACE_USER_ROLE_KEY, role.trim() || "user")
+  localStorage.setItem(PACE_USER_ROLE_KEY, normalizeUserRole(role))
   notifyAuthChange()
 }
 

@@ -17,7 +17,7 @@ type WeatherData = {
 
 type CurrentWeatherProps = {
   className?: string
-  variant?: "default" | "compact"
+  variant?: "default" | "compact" | "header"
   /** 위치 권한 실패 시 표시할 기본 도시 */
   fallbackCity?: string
   /** 메인 등에서 카드 내용 가운데 정렬 */
@@ -36,6 +36,7 @@ export function CurrentWeather({
   const [usingFallback, setUsingFallback] = useState(false)
 
   const compact = variant === "compact"
+  const header = variant === "header"
 
   const fetchWeather = useCallback((url: string) => {
     setLoading(true)
@@ -116,6 +117,74 @@ export function CurrentWeather({
     weather?.icon != null
       ? `https://openweathermap.org/img/wn/${weather.icon}@2x.png`
       : null
+
+  if (header) {
+    return (
+      <section
+        className={cn(
+          "flex h-9 min-w-0 flex-1 items-center gap-1.5 rounded-xl border border-border/50 bg-card/50 px-2 sm:h-10 sm:gap-2 sm:px-2.5 md:h-11",
+          className,
+        )}
+        aria-label="현재 위치 날씨"
+      >
+        {loading && !weather ? (
+          <>
+            <Loader2 className="size-3.5 shrink-0 animate-spin text-muted-foreground" aria-hidden />
+            <span className="truncate text-[10px] text-muted-foreground sm:text-xs">날씨 불러오는 중…</span>
+          </>
+        ) : null}
+
+        {error && !weather && !loading ? (
+          <>
+            <span className="min-w-0 flex-1 truncate text-[10px] text-destructive sm:text-xs">{error}</span>
+            <Button
+              type="button"
+              variant="ghost"
+              size="icon"
+              className="size-7 shrink-0 text-muted-foreground"
+              onClick={requestLocation}
+              aria-label="날씨 새로고침"
+            >
+              <RefreshCw className="size-3.5" />
+            </Button>
+          </>
+        ) : null}
+
+        {weather && !error ? (
+          <>
+            {iconUrl ? (
+              <img src={iconUrl} alt="" width={32} height={32} className="size-7 shrink-0 sm:size-8" />
+            ) : (
+              <Cloud className="size-7 shrink-0 text-primary/70 sm:size-8" aria-hidden />
+            )}
+            <div className="min-w-0 flex-1 text-left leading-tight">
+              <p className="flex items-baseline gap-1 truncate">
+                <span className="text-sm font-semibold tabular-nums text-foreground sm:text-base">{temp}</span>
+                <span className="truncate text-[10px] capitalize text-muted-foreground sm:text-xs">
+                  {weather.description}
+                </span>
+              </p>
+              <p className="truncate text-[10px] text-muted-foreground">
+                {weather.city}
+                {weather.humidity != null ? ` · ${weather.humidity}%` : ""}
+              </p>
+            </div>
+            <Button
+              type="button"
+              variant="ghost"
+              size="icon"
+              className="size-7 shrink-0 text-muted-foreground"
+              onClick={requestLocation}
+              disabled={loading}
+              aria-label="날씨 새로고침"
+            >
+              <RefreshCw className={cn("size-3.5", loading && "animate-spin")} />
+            </Button>
+          </>
+        ) : null}
+      </section>
+    )
+  }
 
   return (
     <section

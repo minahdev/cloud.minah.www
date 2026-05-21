@@ -2,16 +2,34 @@
 
 import { useRouter } from "next/navigation"
 import { type FormEvent, useRef, useState } from "react"
-import { Shield, User } from "lucide-react"
+import { Dumbbell, Shield, User } from "lucide-react"
 
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
-import { setLoggedInUser } from "@/lib/auth-session"
+import { normalizeUserRole, setLoggedInUser } from "@/lib/auth-session"
 import { cn } from "@/lib/utils"
 
 const inputClass =
   "w-full bg-secondary border border-border rounded-xl px-4 py-3 text-sm text-foreground placeholder:text-muted-foreground focus:outline-none focus:border-primary/50"
 
-type SignupRole = "user" | "admin"
+type SignupRole = "user" | "admin" | "coach"
+
+function signupRedirectPath(role: SignupRole): string {
+  if (role === "admin") return "/notices"
+  if (role === "coach") return "/schedule"
+  return "/mypage"
+}
+
+function userIdPlaceholder(role: SignupRole): string {
+  if (role === "admin") return "admin_id"
+  if (role === "coach") return "pace_coach"
+  return "pace_user"
+}
+
+function nicknamePlaceholder(role: SignupRole): string {
+  if (role === "admin") return "관리자"
+  if (role === "coach") return "코치"
+  return "민아"
+}
 
 type IdCheckStatus = "idle" | "checking" | "available" | "taken"
 
@@ -191,9 +209,8 @@ function SignupFormPanel({
       }
 
       const userId = json.userId ?? formProps.userId
-      const userRole = json.role === "admin" ? "admin" : "user"
-      setLoggedInUser(userId, userRole)
-      router.push(role === "admin" ? "/notices" : "/mypage")
+      setLoggedInUser(userId, normalizeUserRole(json.role ?? role))
+      router.push(signupRedirectPath(role))
     } catch {
       setState((prev) => ({
         ...prev,
@@ -227,7 +244,7 @@ function SignupFormPanel({
               required
               disabled={submitting || idCheckBusy}
               className={inputClass}
-              placeholder={role === "admin" ? "admin_id" : "pace_user"}
+              placeholder={userIdPlaceholder(role)}
               onInput={resetIdCheck}
             />
             <button
@@ -317,7 +334,7 @@ function SignupFormPanel({
             required
             disabled={submitting}
             className={inputClass}
-            placeholder={role === "admin" ? "관리자" : "민아"}
+            placeholder={nicknamePlaceholder(role)}
           />
         </div>
 
@@ -345,18 +362,22 @@ export default function SignupPage() {
       <div className="container mx-auto max-w-md px-6">
         <div className="mb-8 text-center">
           <h1 className="mb-2 text-3xl font-bold text-foreground">회원가입</h1>
-          <p className="text-muted-foreground">일반 사용자 또는 관리자 계정을 선택해 가입하세요</p>
+          <p className="text-muted-foreground">회원·코치·관리자 중 역할을 선택해 가입하세요</p>
         </div>
 
         <div className="rounded-2xl border border-border bg-card p-6">
           <Tabs defaultValue="user" className="w-full">
-            <TabsList className="mb-6 grid h-auto w-full grid-cols-2 gap-1 p-1">
-              <TabsTrigger value="user" className="gap-1.5 py-2.5">
-                <User className="h-4 w-4" aria-hidden />
-                사용자
+            <TabsList className="mb-6 grid h-auto w-full grid-cols-3 gap-1 p-1">
+              <TabsTrigger value="user" className="gap-1 py-2 text-xs sm:gap-1.5 sm:py-2.5 sm:text-sm">
+                <User className="h-4 w-4 shrink-0" aria-hidden />
+                회원
               </TabsTrigger>
-              <TabsTrigger value="admin" className="gap-1.5 py-2.5">
-                <Shield className="h-4 w-4" aria-hidden />
+              <TabsTrigger value="coach" className="gap-1 py-2 text-xs sm:gap-1.5 sm:py-2.5 sm:text-sm">
+                <Dumbbell className="h-4 w-4 shrink-0" aria-hidden />
+                코치
+              </TabsTrigger>
+              <TabsTrigger value="admin" className="gap-1 py-2 text-xs sm:gap-1.5 sm:py-2.5 sm:text-sm">
+                <Shield className="h-4 w-4 shrink-0" aria-hidden />
                 관리자
               </TabsTrigger>
             </TabsList>
@@ -364,9 +385,18 @@ export default function SignupPage() {
             <TabsContent value="user">
               <SignupFormPanel
                 role="user"
-                title="사용자 가입"
-                description="훈련·분석·커뮤니티 등 일반 기능을 이용합니다."
-                submitLabel="사용자로 가입하기"
+                title="회원 가입"
+                description="훈련 기록·분석·커뮤니티 등 일반 기능을 이용합니다."
+                submitLabel="회원으로 가입하기"
+              />
+            </TabsContent>
+
+            <TabsContent value="coach">
+              <SignupFormPanel
+                role="coach"
+                title="코치 가입"
+                description="레슨 스케줄·회원 훈련 기록을 관리합니다. 가입 후 스케줄 탭에서 일정을 등록할 수 있어요."
+                submitLabel="코치로 가입하기"
               />
             </TabsContent>
 
@@ -374,7 +404,7 @@ export default function SignupPage() {
               <SignupFormPanel
                 role="admin"
                 title="관리자 가입"
-                description="공지사항 등록·관리 권한이 부여됩니다. 가입 후 공지사항 탭에서 확인하세요."
+                description="공지사항 등록·관리 권한이 부여됩니다. 가입 후 공지사항에서 확인하세요."
                 submitLabel="관리자로 가입하기"
               />
             </TabsContent>

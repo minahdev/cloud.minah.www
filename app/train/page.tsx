@@ -1,6 +1,7 @@
 "use client"
 
 import { FormEvent, useEffect, useState } from "react"
+import { useRouter } from "next/navigation"
 import { Dumbbell, Droplets, Scale, StickyNote, UtensilsCrossed } from "lucide-react"
 
 import { Button } from "@/components/ui/button"
@@ -37,7 +38,7 @@ const MUSCLE_GROUPS = [
   "종아리",
 ] as const
 
-export default function TrainPage() {
+export function TrainPanel({ embedded = false }: { embedded?: boolean }) {
   const [ui, setUi] = useState<TrainFormUi>({
     submitting: false,
     error: null,
@@ -108,7 +109,7 @@ export default function TrainPage() {
     setUi((prev) => ({
       ...prev,
       submitting: false,
-      saved: "오늘 기록을 저장했습니다. 분석 탭에서 그래프를 확인할 수 있어요.",
+      saved: "오늘 기록을 저장했습니다. 마이페이지 분석 탭에서 그래프를 확인할 수 있어요.",
     }))
     setInitial(getTodayTrainLog())
     setFormKey((k) => k + 1)
@@ -118,7 +119,13 @@ export default function TrainPage() {
 
   if (initial === undefined) {
     return (
-      <div className="flex min-h-[50vh] items-center justify-center pt-28">
+      <div
+        className={
+          embedded
+            ? "flex min-h-[12rem] items-center justify-center"
+            : "flex min-h-[50vh] items-center justify-center pt-28"
+        }
+      >
         <div
           className="h-12 w-12 animate-pulse rounded-full bg-secondary"
           aria-hidden
@@ -128,17 +135,23 @@ export default function TrainPage() {
   }
 
   return (
-    <div className="pb-16 pt-28 md:pt-32">
-      <div className="container mx-auto max-w-4xl px-6">
-        <header className="mb-10">
-          <p className="text-sm font-medium text-primary">Train Log</p>
-          <h1 className="mt-1 text-3xl font-bold tracking-tight text-foreground md:text-4xl">
-            오늘의 훈련 기록
-          </h1>
-          <p className="mt-2 max-w-xl text-muted-foreground">
-            운동·몸무게·식단·메모를 하루 단위로 남기면 분석 탭에서 추이를 볼 수 있어요.
+    <div className={embedded ? "pb-4" : "pb-16 pt-28 md:pt-32"}>
+      <div className={embedded ? "mx-auto w-full max-w-4xl" : "container mx-auto max-w-4xl px-6"}>
+        {!embedded ? (
+          <header className="mb-10">
+            <p className="text-sm font-medium text-primary">Train Log</p>
+            <h1 className="mt-1 text-3xl font-bold tracking-tight text-foreground md:text-4xl">
+              오늘의 훈련 기록
+            </h1>
+            <p className="mt-2 max-w-xl text-muted-foreground">
+              운동·몸무게·식단·메모를 하루 단위로 남기면 분석 탭에서 추이를 볼 수 있어요.
+            </p>
+          </header>
+        ) : (
+          <p className="mb-6 text-sm text-muted-foreground">
+            운동·몸무게·식단·메모를 하루 단위로 기록하세요.
           </p>
-        </header>
+        )}
 
         <form key={formKey} onSubmit={handleSubmit} className="space-y-6">
           <div className="grid gap-6 sm:grid-cols-2">
@@ -261,7 +274,7 @@ export default function TrainPage() {
                   className="h-10 w-40"
                 />
                 <p className="text-xs text-muted-foreground">
-                  입력하면 분석 탭에서 추이 그래프에 반영됩니다.
+                  입력하면 마이페이지 분석 탭 그래프에 반영됩니다.
                 </p>
               </CardContent>
             </Card>
@@ -534,4 +547,12 @@ function BodySelector({
       />
     </svg>
   )
+}
+
+export default function TrainPage() {
+  const router = useRouter()
+  useEffect(() => {
+    router.replace("/mypage?tab=train")
+  }, [router])
+  return null
 }

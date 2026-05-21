@@ -2,7 +2,6 @@
 
 import { Sparkles } from "lucide-react"
 
-import { CurrentWeather } from "@/components/current-weather"
 import { GeminiChat } from "@/components/gemini-chat"
 import { PeriodLines } from "@/components/period-lines"
 import { TodayStoryPanel } from "@/components/today-story-panel"
@@ -31,8 +30,6 @@ export function HomeMainTabs() {
           </span>
         </h1>
       </div>
-
-      <CurrentWeather variant="compact" centered className={`${contentWidth} mb-5 shrink-0`} />
 
       <PeriodLines
         className={`${contentWidth} text-sm leading-relaxed text-muted-foreground md:text-base`}
