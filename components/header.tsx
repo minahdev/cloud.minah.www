@@ -6,7 +6,14 @@ import { usePathname, useSearchParams } from "next/navigation"
 import { Activity, BarChart3, Menu, UserRound, Zap } from "lucide-react"
 
 import { CurrentWeather } from "@/components/current-weather"
-import { Sheet, SheetClose, SheetContent, SheetHeader, SheetTitle } from "@/components/ui/sheet"
+import {
+  Sheet,
+  SheetClose,
+  SheetContent,
+  SheetDescription,
+  SheetHeader,
+  SheetTitle,
+} from "@/components/ui/sheet"
 
 const navItems = [
   { href: "/", label: "메인" },
@@ -53,7 +60,7 @@ export function Header() {
               <Activity className="h-6 w-6 text-primary md:h-7 md:w-7" />
             </div>
           </Link>
-          <CurrentWeather variant="header" />
+          <CurrentWeather variant="header" fallbackCity="Seoul" />
         </div>
 
         <nav className="hidden" aria-hidden>
@@ -104,6 +111,9 @@ export function Header() {
               </div>
               메뉴
             </SheetTitle>
+            <SheetDescription className="sr-only">
+              마이페이지와 주요 페이지로 이동하는 메뉴입니다.
+            </SheetDescription>
           </SheetHeader>
 
           <nav className="mt-6 flex flex-col gap-2">

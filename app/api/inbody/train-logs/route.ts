@@ -7,18 +7,23 @@ function err(data: unknown, fallback: string) {
 }
 
 export async function GET(req: Request) {
-  const userId = new URL(req.url).searchParams.get("userId")?.trim()
+  const params = new URL(req.url).searchParams
+  const userId = params.get("userId")?.trim()
+  const date = params.get("date")
   if (!userId) return Response.json({ error: "userId가 필요합니다." }, { status: 400 })
   const q = new URLSearchParams({ userId })
-  const res = await fetch(`${backendBase}/mypage/profile?${q}`, { cache: "no-store" })
-  const data = await res.json().catch(() => ({}))
+  const path = date
+    ? `${backendBase}/inbody/train-logs/day?${new URLSearchParams({ userId, date })}`
+    : `${backendBase}/inbody/train-logs?${q}`
+  const res = await fetch(path, { cache: "no-store" })
+  const data = await res.json().catch(() => null)
   if (!res.ok) return Response.json({ error: err(data, "조회 실패") }, { status: res.status })
   return Response.json(data)
 }
 
 export async function PUT(req: Request) {
   const body = await req.json()
-  const res = await fetch(`${backendBase}/mypage/profile`, {
+  const res = await fetch(`${backendBase}/inbody/train-logs`, {
     method: "PUT",
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify(body),

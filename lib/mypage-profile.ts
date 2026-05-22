@@ -9,8 +9,11 @@ export type ExerciseExperience =
 
 export type WeeklyExerciseGoal = "1_2" | "3_4" | "5_plus"
 
+export type Gender = "male" | "female"
+
 export type MyPageProfile = {
   name: string
+  gender: Gender
   birthDate: string
   phone: string
   heightCm: string
@@ -22,6 +25,11 @@ export type MyPageProfile = {
   healthNote: string
   updatedAt: string
 }
+
+export const GENDER_OPTIONS: { value: Gender; label: string }[] = [
+  { value: "male", label: "남성" },
+  { value: "female", label: "여성" },
+]
 
 export const FAVORITE_EXERCISE_OPTIONS: { value: FavoriteExercise; label: string }[] = [
   { value: "gym", label: "헬스" },
@@ -56,6 +64,14 @@ const favoriteExerciseLabelByValue = Object.fromEntries(
   FAVORITE_EXERCISE_OPTIONS.map((o) => [o.value, o.label]),
 ) as Record<FavoriteExercise, string>
 
+const genderLabelByValue = Object.fromEntries(
+  GENDER_OPTIONS.map((o) => [o.value, o.label]),
+) as Record<Gender, string>
+
+export function getGenderLabel(value: Gender): string {
+  return genderLabelByValue[value] ?? value
+}
+
 export function getExperienceLabel(value: ExerciseExperience): string {
   return experienceLabelByValue[value] ?? value
 }
@@ -75,6 +91,8 @@ export function getFavoriteExerciseLabel(
 type ApiMyPageProfile = {
   userId?: string
   name?: string | null
+  gender?: Gender | null
+  genderLabel?: string | null
   birthDate?: string | null
   phone?: string | null
   heightCm?: number | null
@@ -101,8 +119,11 @@ export async function fetchMyPageProfileFromApi(
   if (!json.name && !json.birthDate && !json.phone) {
     return null
   }
+  const gender: Gender = json.gender === "female" ? "female" : "male"
+
   return {
     name: json.name ?? "",
+    gender,
     birthDate: json.birthDate ?? "",
     phone: json.phone ?? "",
     heightCm: json.heightCm != null ? String(json.heightCm) : "",
@@ -126,6 +147,7 @@ export async function saveMyPageProfileToApi(
     body: JSON.stringify({
       userId,
       name: profile.name,
+      gender: profile.gender,
       birthDate: profile.birthDate,
       phone: profile.phone,
       heightCm: Number(profile.heightCm),

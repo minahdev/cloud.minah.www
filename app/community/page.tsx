@@ -1,223 +1,207 @@
 "use client"
 
-import { FormEvent, useEffect, useState } from "react"
+import { useCallback, useEffect, useMemo, useState } from "react"
 import Link from "next/link"
-import { MessageSquarePlus, Users } from "lucide-react"
+import { Plus } from "lucide-react"
 
+import { CommunityCommentsDialog } from "@/components/community-comments-dialog"
+import { CommunityComposeDialog } from "@/components/community-compose-dialog"
+import { CommunityFeedCard } from "@/components/community-feed-card"
 import { Button } from "@/components/ui/button"
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
-import { Label } from "@/components/ui/label"
-import { Textarea } from "@/components/ui/textarea"
 import { getLoggedInUserId } from "@/lib/auth-session"
+import { cn } from "@/lib/utils"
 import {
-  WORKOUT_TYPE_OPTIONS,
-  addCommunityPost,
+  COMMUNITY_FILTER_CHIPS,
   loadCommunityPosts,
+  toggleCommunityCheer,
   type CommunityPost,
 } from "@/lib/pace-community-storage"
 
-type CommunityUi = {
-  submitting: boolean
-  error: string | null
-  posts: CommunityPost[] | null
-}
-
-function formatPostDate(iso: string) {
-  try {
-    return new Date(iso).toLocaleString("ko-KR", {
-      month: "short",
-      day: "numeric",
-      hour: "2-digit",
-      minute: "2-digit",
-    })
-  } catch {
-    return iso
-  }
-}
-
 export default function CommunityPage() {
-  const [ui, setUi] = useState<CommunityUi>({
-    submitting: false,
-    error: null,
-    posts: null,
-  })
-  const [formKey, setFormKey] = useState(0)
+  const [posts, setPosts] = useState<CommunityPost[] | null>(null)
+  const [loadError, setLoadError] = useState<string | null>(null)
+  const [filter, setFilter] = useState("all")
+  const [composeOpen, setComposeOpen] = useState(false)
+  const [commentPost, setCommentPost] = useState<CommunityPost | null>(null)
+  const [commentsOpen, setCommentsOpen] = useState(false)
+  const [cheeringId, setCheeringId] = useState<string | null>(null)
   const loggedInId = getLoggedInUserId()
 
-  const refreshPosts = () => {
-    setUi((prev) => ({ ...prev, posts: loadCommunityPosts() }))
-  }
+  const refreshPosts = useCallback(() => {
+    loadCommunityPosts()
+      .then((list) => {
+        setPosts(list)
+        setLoadError(null)
+      })
+      .catch(() => {
+        setPosts([])
+        setLoadError("게시물을 불러오지 못했습니다.")
+      })
+  }, [])
 
   useEffect(() => {
     refreshPosts()
-  }, [])
+  }, [refreshPosts])
 
-  const handleSubmit = (e: FormEvent<HTMLFormElement>) => {
-    e.preventDefault()
-    setUi((prev) => ({ ...prev, error: null, submitting: true }))
+  const filteredPosts = useMemo(() => {
+    if (!posts) return null
+    if (filter === "all") return posts
+    return posts.filter((p) => p.workoutType === filter)
+  }, [posts, filter])
 
-    const authorId = getLoggedInUserId()
-    if (!authorId) {
-      setUi((prev) => ({
-        ...prev,
-        submitting: false,
-        error: "게시물을 올리려면 먼저 로그인해 주세요.",
-      }))
-      return
+  const handleCheer = async (post: CommunityPost) => {
+    if (!loggedInId) return
+    setCheeringId(post.id)
+    try {
+      const result = await toggleCommunityCheer(post.id)
+      setPosts((prev) =>
+        prev?.map((p) =>
+          p.id === post.id
+            ? {
+                ...p,
+                cheerCount: result.cheerCount,
+                cheeredByMe: result.cheeredByMe,
+              }
+            : p,
+        ) ?? null,
+      )
+    } catch {
+      /* ignore */
+    } finally {
+      setCheeringId(null)
     }
-
-    const formData = new FormData(e.currentTarget)
-    const workoutType = String(formData.get("workoutType") ?? "").trim()
-    const content = String(formData.get("content") ?? "").trim()
-
-    if (!content) {
-      setUi((prev) => ({
-        ...prev,
-        submitting: false,
-        error: "운동 내용을 입력해 주세요.",
-      }))
-      return
-    }
-
-    if (content.length > 2000) {
-      setUi((prev) => ({
-        ...prev,
-        submitting: false,
-        error: "내용은 2000자 이하로 작성해 주세요.",
-      }))
-      return
-    }
-
-    addCommunityPost(authorId, { workoutType, content })
-    refreshPosts()
-    setFormKey((k) => k + 1)
-    setUi((prev) => ({ ...prev, submitting: false, error: null }))
   }
 
+  const handleCommentAdded = () => {
+    if (!commentPost) return
+    setPosts((prev) =>
+      prev?.map((p) =>
+        p.id === commentPost.id ? { ...p, commentCount: p.commentCount + 1 } : p,
+      ) ?? null,
+    )
+  }
+
+  const feedCount = filteredPosts?.length ?? 0
+
   return (
-    <div className="pb-16 pt-28 md:pt-32">
-      <div className="container mx-auto max-w-3xl px-6">
-        <header className="mb-8">
+    <div className="pb-24 pt-28 md:pt-32">
+      <div className="container mx-auto max-w-3xl px-4 sm:px-6">
+        <header className="mb-6">
           <p className="text-sm font-medium text-primary">Community</p>
           <h1 className="mt-1 text-3xl font-bold tracking-tight text-foreground md:text-4xl">
             운동 커뮤니티
           </h1>
           <p className="mt-2 text-muted-foreground">
-            오늘 한 운동을 공유하고, 다른 사람들의 기록을 응어보세요.
+            오늘 한 운동을 공유하고, 다른 사람들의 기록에 응원해 보세요.
           </p>
         </header>
 
-        <Card className="mb-8 border-border/80 shadow-sm">
-          <CardHeader className="pb-3">
-            <CardTitle className="flex items-center gap-2 text-base">
-              <MessageSquarePlus className="h-4 w-4 text-primary" aria-hidden />
-              운동 기록 올리기
-            </CardTitle>
-            <CardDescription>
-              {loggedInId ? (
-                <>
-                  <span className="font-medium text-foreground">{loggedInId}</span> 님으로
-                  게시합니다.
-                </>
-              ) : (
-                <>
-                  로그인한 뒤 게시할 수 있습니다.{" "}
-                  <Link href="/login" className="text-primary underline-offset-4 hover:underline">
-                    로그인
-                  </Link>
-                </>
+        <div
+          className="-mx-1 mb-6 flex gap-2 overflow-x-auto px-1 pb-1 scrollbar-none"
+          role="tablist"
+          aria-label="운동 종류 필터"
+        >
+          {COMMUNITY_FILTER_CHIPS.map((chip) => (
+            <button
+              key={chip.id}
+              type="button"
+              role="tab"
+              aria-selected={filter === chip.id}
+              onClick={() => setFilter(chip.id)}
+              className={cn(
+                "shrink-0 rounded-full border px-3.5 py-1.5 text-sm font-medium transition-colors",
+                filter === chip.id
+                  ? "border-primary bg-primary text-primary-foreground"
+                  : "border-border bg-background text-muted-foreground hover:border-primary/40 hover:text-foreground",
               )}
-            </CardDescription>
-          </CardHeader>
-          <CardContent>
-            <form key={formKey} onSubmit={handleSubmit} className="space-y-4">
-              <div className="space-y-1.5">
-                <Label htmlFor="workoutType">운동 종류</Label>
-                <select
-                  id="workoutType"
-                  name="workoutType"
-                  defaultValue="러닝"
-                  className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
-                >
-                  {WORKOUT_TYPE_OPTIONS.map((t) => (
-                    <option key={t} value={t}>
-                      {t}
-                    </option>
-                  ))}
-                </select>
-              </div>
-              <div className="space-y-1.5">
-                <Label htmlFor="content">내용</Label>
-                <Textarea
-                  id="content"
-                  name="content"
-                  placeholder="오늘의 운동, 거리, 느낀 점 등을 적어 주세요."
-                  rows={4}
-                  className="resize-none"
-                  required
-                />
-              </div>
-              {ui.error ? (
-                <p className="text-sm text-destructive" role="alert">
-                  {ui.error}
-                </p>
-              ) : null}
-              <Button type="submit" disabled={ui.submitting || !loggedInId}>
-                {ui.submitting ? "올리는 중…" : "게시하기"}
-              </Button>
-            </form>
-          </CardContent>
-        </Card>
+            >
+              {chip.label}
+            </button>
+          ))}
+        </div>
 
-        <div className="mb-4 flex items-center gap-2">
-          <Users className="h-5 w-5 text-primary" aria-hidden />
+        <div className="mb-3 flex items-baseline justify-between gap-2">
           <h2 className="text-lg font-semibold text-foreground">피드</h2>
-          {ui.posts ? (
-            <span className="text-sm text-muted-foreground">({ui.posts.length}개)</span>
+          {filteredPosts !== null ? (
+            <span className="text-sm text-muted-foreground">{feedCount}개</span>
           ) : null}
         </div>
 
-        {ui.posts === null ? (
+        {loadError ? (
+          <p className="mb-4 text-sm text-destructive" role="alert">
+            {loadError}
+          </p>
+        ) : null}
+
+        {filteredPosts === null ? (
           <div className="space-y-4">
             {[1, 2, 3].map((i) => (
               <div
                 key={i}
-                className="h-28 animate-pulse rounded-xl border border-border/60 bg-secondary/40"
+                className="h-36 animate-pulse rounded-xl border border-border/60 bg-secondary/40"
                 aria-hidden
               />
             ))}
           </div>
-        ) : ui.posts.length === 0 ? (
-          <p className="rounded-xl border border-dashed border-border py-12 text-center text-sm text-muted-foreground">
-            아직 게시물이 없습니다. 첫 운동 기록을 올려 보세요.
+        ) : filteredPosts.length === 0 ? (
+          <p className="rounded-xl border border-dashed border-border py-16 text-center text-sm text-muted-foreground">
+            {filter === "all"
+              ? "아직 게시물이 없습니다. + 버튼으로 첫 운동 기록을 올려 보세요."
+              : "이 종목의 게시물이 없습니다."}
           </p>
         ) : (
           <ul className="flex flex-col gap-4">
-            {ui.posts.map((post) => (
+            {filteredPosts.map((post) => (
               <li key={post.id}>
-                <Card className="border-border/80 shadow-sm">
-                  <CardHeader className="pb-2">
-                    <div className="flex flex-wrap items-center justify-between gap-2">
-                      <CardTitle className="text-sm font-semibold text-foreground">
-                        {post.authorId}
-                      </CardTitle>
-                      <span className="rounded-full bg-primary/15 px-2.5 py-0.5 text-xs font-medium text-primary">
-                        {post.workoutType}
-                      </span>
-                    </div>
-                    <CardDescription>{formatPostDate(post.createdAt)}</CardDescription>
-                  </CardHeader>
-                  <CardContent className="pt-0">
-                    <p className="whitespace-pre-wrap text-sm leading-relaxed text-foreground">
-                      {post.content}
-                    </p>
-                  </CardContent>
-                </Card>
+                <CommunityFeedCard
+                  post={post}
+                  onCheer={handleCheer}
+                  onOpenComments={(p) => {
+                    setCommentPost(p)
+                    setCommentsOpen(true)
+                  }}
+                  cheering={cheeringId === post.id}
+                />
               </li>
             ))}
           </ul>
         )}
       </div>
+
+      <Button
+        type="button"
+        size="icon"
+        className="fixed bottom-20 right-4 z-40 h-14 w-14 rounded-full shadow-lg md:right-8"
+        onClick={() => setComposeOpen(true)}
+        aria-label="운동 기록 올리기"
+      >
+        <Plus className="h-6 w-6" aria-hidden />
+      </Button>
+
+      <CommunityComposeDialog
+        open={composeOpen}
+        onOpenChange={setComposeOpen}
+        loggedInId={loggedInId}
+        onPosted={refreshPosts}
+      />
+
+      <CommunityCommentsDialog
+        post={commentPost}
+        open={commentsOpen}
+        onOpenChange={setCommentsOpen}
+        loggedInId={loggedInId}
+        onCommentAdded={handleCommentAdded}
+      />
+
+      {!loggedInId ? (
+        <p className="fixed bottom-[4.5rem] left-0 right-0 z-30 px-4 text-center text-xs text-muted-foreground pointer-events-none">
+          응원·댓글은{" "}
+          <Link href="/login" className="text-primary underline-offset-4 hover:underline pointer-events-auto">
+            로그인
+          </Link>
+          후 이용할 수 있습니다.
+        </p>
+      ) : null}
     </div>
   )
 }

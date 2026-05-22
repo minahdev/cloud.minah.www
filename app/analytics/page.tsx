@@ -4,7 +4,7 @@ import { useEffect, useMemo, useState } from "react"
 import { useRouter } from "next/navigation"
 import { format, parseISO } from "date-fns"
 import { ko } from "date-fns/locale"
-import { CalendarDays, Dumbbell, Scale, UtensilsCrossed } from "lucide-react"
+import { CalendarDays, Dumbbell, Heart, Scale, UtensilsCrossed } from "lucide-react"
 import {
   CartesianGrid,
   Line,
@@ -32,6 +32,11 @@ import {
   type TrainDailyLog,
   type TrainDiet,
 } from "@/lib/pace-train-storage"
+import {
+  hasTodayStoryContent,
+  loadTodayStories,
+  type TodayStoryEntry,
+} from "@/lib/pace-today-story-storage"
 
 function dateToKey(d: Date): string {
   const y = d.getFullYear()
@@ -121,13 +126,34 @@ function DietDetail({ diet }: { diet: TrainDiet }) {
   )
 }
 
+function TodayStoryDayDetail({ entry }: { entry: TodayStoryEntry | null }) {
+  if (!entry || !hasTodayStoryContent(entry)) return null
+
+  return (
+    <div className="space-y-3 rounded-xl border border-rose-500/25 bg-rose-500/5 px-4 py-3 text-sm">
+      <p className="flex items-center gap-1.5 text-xs font-medium text-muted-foreground">
+        <Heart className="h-3.5 w-3.5 text-rose-400" aria-hidden />
+        오늘의 이야기 (메인에서 기록)
+      </p>
+      {entry.mood ? (
+        <Badge variant="secondary" className="border-rose-500/30 bg-rose-500/10 text-foreground">
+          {entry.mood}
+        </Badge>
+      ) : null}
+      {entry.story.trim() ? (
+        <p className="whitespace-pre-wrap leading-relaxed text-foreground">{entry.story}</p>
+      ) : (
+        <p className="text-muted-foreground">기분만 선택된 날입니다.</p>
+      )}
+    </div>
+  )
+}
+
 function TrainDayDetail({ log }: { log: TrainDailyLog | null }) {
   if (!log || !hasSavedRecord(log)) {
     return (
-      <p className="rounded-lg border border-dashed border-border bg-secondary/25 px-4 py-10 text-center text-sm text-muted-foreground">
+      <p className="rounded-lg border border-dashed border-border bg-secondary/25 px-4 py-6 text-center text-sm text-muted-foreground">
         이 날짜에 저장된 훈련 기록이 없습니다.
-        <br />
-        마이페이지 훈련 탭에서 기록을 남기면 여기에 표시됩니다.
       </p>
     )
   }
@@ -188,16 +214,70 @@ function TrainDayDetail({ log }: { log: TrainDailyLog | null }) {
   )
 }
 
+function DayRecordDetail({
+  story,
+  log,
+}: {
+  story: TodayStoryEntry | null
+  log: TrainDailyLog | null
+}) {
+  const hasStory = story != null && hasTodayStoryContent(story)
+  const hasTrain = log != null && hasSavedRecord(log)
+
+  if (!hasStory && !hasTrain) {
+    return (
+      <p className="rounded-lg border border-dashed border-border bg-secondary/25 px-4 py-10 text-center text-sm text-muted-foreground">
+        이 날짜에 저장된 기록이 없습니다.
+        <br />
+        메인에서 감정·이야기를 남기거나, 훈련 탭에서 운동 기록을 저장해 보세요.
+      </p>
+    )
+  }
+
+  return (
+    <div className="space-y-5">
+      <TodayStoryDayDetail entry={story} />
+      {hasTrain ? (
+        <>
+          {hasStory ? (
+            <p className="text-xs font-medium text-muted-foreground">훈련 · 식단</p>
+          ) : null}
+          <TrainDayDetail log={log} />
+        </>
+      ) : null}
+    </div>
+  )
+}
+
 export function AnalyticsPanel({ embedded = false }: { embedded?: boolean }) {
   const [logs, setLogs] = useState<TrainDailyLog[]>([])
+  const [stories, setStories] = useState<TodayStoryEntry[]>([])
   const [selectedDate, setSelectedDate] = useState<Date>(() => new Date())
   const [calendarMonth, setCalendarMonth] = useState<Date>(() => new Date())
 
   useEffect(() => {
-    const refresh = () => setLogs(loadTrainLogs())
+    let cancelled = false
+    const refresh = () => {
+      Promise.all([loadTrainLogs(), loadTodayStories()])
+        .then(([trainData, storyData]) => {
+          if (!cancelled) {
+            setLogs(trainData)
+            setStories(storyData)
+          }
+        })
+        .catch(() => {
+          if (!cancelled) {
+            setLogs([])
+            setStories([])
+          }
+        })
+    }
     refresh()
     window.addEventListener("focus", refresh)
-    return () => window.removeEventListener("focus", refresh)
+    return () => {
+      cancelled = true
+      window.removeEventListener("focus", refresh)
+    }
   }, [])
 
   const logsByDate = useMemo(() => {
@@ -206,12 +286,24 @@ export function AnalyticsPanel({ embedded = false }: { embedded?: boolean }) {
     return map
   }, [logs])
 
+  const storiesByDate = useMemo(() => {
+    const map = new Map<string, TodayStoryEntry>()
+    for (const s of stories) map.set(s.date, s)
+    return map
+  }, [stories])
+
   const selectedKey = dateToKey(selectedDate)
   const selectedLog = logsByDate.get(selectedKey) ?? null
+  const selectedStory = storiesByDate.get(selectedKey) ?? null
 
-  const loggedDates = useMemo(
+  const trainLoggedDates = useMemo(
     () => logs.filter(hasSavedRecord).map((l) => parseISO(l.date)),
     [logs],
+  )
+
+  const moodLoggedDates = useMemo(
+    () => stories.filter(hasTodayStoryContent).map((s) => parseISO(s.date)),
+    [stories],
   )
 
   const weightChartRows = useMemo(() => {
@@ -237,13 +329,13 @@ export function AnalyticsPanel({ embedded = false }: { embedded?: boolean }) {
               나의 훈련 기록
             </h1>
             <p className="mt-2 max-w-2xl text-muted-foreground">
-              훈련 탭에서 저장한 내용을 날짜별로 확인하고, 몸무게 추이는 아래 그래프에서 볼 수
-              있습니다.
+              메인에서 남긴 감정·이야기와 훈련 탭 기록을 날짜별로 확인하고, 몸무게 추이는 아래
+              그래프에서 볼 수 있습니다.
             </p>
           </header>
         ) : (
           <p className="mb-6 text-sm text-muted-foreground">
-            저장한 훈련 기록을 날짜별로 확인하고 몸무게 추이를 볼 수 있어요.
+            메인에서 남긴 감정·이야기와 훈련 기록을 날짜별로 확인하고, 몸무게 추이를 볼 수 있어요.
           </p>
         )}
 
@@ -254,9 +346,15 @@ export function AnalyticsPanel({ embedded = false }: { embedded?: boolean }) {
                 <CalendarDays className="h-4 w-4 text-primary" aria-hidden />
                 기록 캘린더
               </CardTitle>
-              <CardDescription>
-                <span className="inline-block size-2 rounded-full bg-primary align-middle" />{" "}
-                표시된 날짜에 저장된 기록이 있습니다.
+              <CardDescription className="space-y-1">
+                <span className="block">
+                  <span className="mr-1.5 inline-block size-2 rounded-full bg-primary align-middle" />
+                  훈련 기록
+                </span>
+                <span className="block">
+                  <span className="mr-1.5 inline-block size-2 rounded-full bg-rose-400 align-middle" />
+                  감정·이야기 (메인)
+                </span>
               </CardDescription>
             </CardHeader>
             <CardContent className="flex flex-col items-center">
@@ -266,10 +364,12 @@ export function AnalyticsPanel({ embedded = false }: { embedded?: boolean }) {
                 onSelect={(d) => d && setSelectedDate(d)}
                 month={calendarMonth}
                 onMonthChange={setCalendarMonth}
-                modifiers={{ logged: loggedDates }}
+                modifiers={{ train: trainLoggedDates, mood: moodLoggedDates }}
                 modifiersClassNames={{
-                  logged:
-                    "relative font-semibold after:pointer-events-none after:absolute after:bottom-1 after:left-1/2 after:h-1 after:w-1 after:-translate-x-1/2 after:rounded-full after:bg-primary",
+                  train:
+                    "relative font-semibold after:pointer-events-none after:absolute after:bottom-1 after:left-[42%] after:h-1 after:w-1 after:-translate-x-1/2 after:rounded-full after:bg-primary",
+                  mood:
+                    "relative font-semibold after:pointer-events-none after:absolute after:bottom-1 after:left-[58%] after:h-1 after:w-1 after:-translate-x-1/2 after:rounded-full after:bg-rose-400",
                 }}
                 className="rounded-lg [--cell-size:--spacing(9)]"
               />
@@ -293,11 +393,11 @@ export function AnalyticsPanel({ embedded = false }: { embedded?: boolean }) {
             <CardHeader className="pb-2">
               <CardTitle className="text-base">{selectedLabel}</CardTitle>
               <CardDescription>
-                {selectedKey === trainLogTodayKey() ? "오늘" : "선택한 날"}의 훈련·식단 기록
+                {selectedKey === trainLogTodayKey() ? "오늘" : "선택한 날"}의 감정·훈련 기록
               </CardDescription>
             </CardHeader>
             <CardContent>
-              <TrainDayDetail log={selectedLog} />
+              <DayRecordDetail story={selectedStory} log={selectedLog} />
             </CardContent>
           </Card>
         </div>

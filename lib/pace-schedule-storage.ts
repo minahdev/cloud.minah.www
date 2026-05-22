@@ -1,6 +1,7 @@
-/** 브라우저 localStorage — 레슨 일정·기록 (추후 Neon API 연동 예정) */
+/** 레슨 일정·기록 (Neon / inbody API) */
 
-export const PACE_SCHEDULE_KEY = "pace-lesson-schedule"
+import { getLoggedInUserId } from "@/lib/auth-session"
+import { inbodyFetch, withUserId } from "@/lib/inbody-api"
 
 export type LessonMedia = {
   id: string
@@ -36,66 +37,45 @@ export function scheduleDateKey(d: Date): string {
   return `${y}-${m}-${day}`
 }
 
-function parseLessons(raw: string | null): LessonEntry[] {
-  if (!raw) return []
-  try {
-    const parsed = JSON.parse(raw) as unknown
-    if (!Array.isArray(parsed)) return []
-    return parsed.filter(
-      (x): x is LessonEntry =>
-        x !== null &&
-        typeof x === "object" &&
-        typeof (x as LessonEntry).id === "string" &&
-        typeof (x as LessonEntry).date === "string",
-    )
-  } catch {
-    return []
-  }
+function lessonQuery(actorId: string, memberUserId: string): string {
+  const extra =
+    memberUserId !== actorId ? { memberUserId } : undefined
+  return withUserId("/api/inbody/lessons", actorId, extra)
 }
 
-function loadAllLessons(): LessonEntry[] {
-  if (typeof window === "undefined") return []
-  return parseLessons(localStorage.getItem(PACE_SCHEDULE_KEY))
+export async function loadLessons(memberUserId: string): Promise<LessonEntry[]> {
+  const userId = getLoggedInUserId()
+  if (!userId) return []
+  const rows = await inbodyFetch<LessonEntry[]>(lessonQuery(userId, memberUserId))
+  return Array.isArray(rows) ? rows : []
 }
 
-function saveAllLessons(lessons: LessonEntry[]): void {
-  if (typeof window === "undefined") return
-  localStorage.setItem(PACE_SCHEDULE_KEY, JSON.stringify(lessons))
+export async function upsertLesson(entry: LessonEntry, memberUserId: string): Promise<void> {
+  const userId = getLoggedInUserId()
+  if (!userId) throw new Error("로그인이 필요합니다.")
+  await inbodyFetch("/api/inbody/lessons", {
+    method: "PUT",
+    body: JSON.stringify({
+      userId,
+      memberUserId: memberUserId !== userId ? memberUserId : undefined,
+      id: entry.id,
+      date: entry.date,
+      title: entry.title,
+      time: entry.time,
+      scheduleNote: entry.scheduleNote,
+      record: entry.record,
+      createdAt: entry.createdAt,
+    }),
+  })
 }
 
-/** 회원 본인 스케줄 열람 시, 예전 공용 저장분을 해당 회원 소유로 한 번 이관 */
-function claimLegacyLessonsForMember(memberUserId: string): void {
-  const all = loadAllLessons()
-  const hasOrphans = all.some((l) => !l.memberUserId)
-  if (!hasOrphans) return
-  const onlyOrphans = all.every((l) => !l.memberUserId)
-  if (!onlyOrphans) return
-  saveAllLessons(all.map((l) => ({ ...l, memberUserId })))
-}
-
-function lessonBelongsToMember(lesson: LessonEntry, memberUserId: string): boolean {
-  return lesson.memberUserId === memberUserId
-}
-
-export function loadLessons(memberUserId: string): LessonEntry[] {
-  claimLegacyLessonsForMember(memberUserId)
-  return loadAllLessons().filter((l) => lessonBelongsToMember(l, memberUserId))
-}
-
-export function upsertLesson(entry: LessonEntry, memberUserId: string): void {
-  const list = loadAllLessons()
-  const withMember: LessonEntry = { ...entry, memberUserId }
-  const idx = list.findIndex((l) => l.id === withMember.id)
-  if (idx >= 0) list[idx] = withMember
-  else list.push(withMember)
-  saveAllLessons(list)
-}
-
-export function deleteLesson(id: string, memberUserId: string): void {
-  const list = loadAllLessons()
-  saveAllLessons(
-    list.filter((l) => !(l.id === id && lessonBelongsToMember(l, memberUserId))),
-  )
+export async function deleteLesson(id: string, memberUserId: string): Promise<void> {
+  const userId = getLoggedInUserId()
+  if (!userId) throw new Error("로그인이 필요합니다.")
+  const extra =
+    memberUserId !== userId ? { memberUserId } : undefined
+  const path = `${withUserId(`/api/inbody/lessons/${encodeURIComponent(id)}`, userId, extra)}`
+  await inbodyFetch(path, { method: "DELETE" })
 }
 
 export function lessonsForDate(lessons: LessonEntry[], dateKey: string): LessonEntry[] {

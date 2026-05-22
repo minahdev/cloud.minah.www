@@ -1,6 +1,6 @@
 "use client"
 
-import { useCallback, useEffect, useState } from "react"
+import { useCallback, useEffect, useRef, useState } from "react"
 import { Cloud, Loader2, MapPin, RefreshCw } from "lucide-react"
 
 import { Button } from "@/components/ui/button"
@@ -34,27 +34,52 @@ export function CurrentWeather({
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
   const [usingFallback, setUsingFallback] = useState(false)
+  const fetchPriorityRef = useRef(0)
 
   const compact = variant === "compact"
   const header = variant === "header"
 
-  const fetchWeather = useCallback((url: string) => {
-    setLoading(true)
-    setError(null)
-    return fetch(url)
-      .then(async (res) => {
-        const data = (await res.json()) as WeatherData & { error?: string; detail?: string }
-        if (!res.ok) {
-          throw new Error(data.error ?? data.detail ?? "날씨를 불러오지 못했습니다.")
-        }
-        setWeather(data)
-      })
-      .catch((e: unknown) => {
-        setWeather(null)
-        setError(e instanceof Error ? e.message : "날씨를 불러오지 못했습니다.")
-      })
-      .finally(() => setLoading(false))
-  }, [])
+  const fetchWeather = useCallback(
+    (url: string, opts?: { keepPrevious?: boolean; priority?: number }) => {
+      const priority = opts?.priority ?? 0
+      if (!opts?.keepPrevious) {
+        setLoading(true)
+      }
+      setError(null)
+
+      const controller = new AbortController()
+      const timer = window.setTimeout(() => controller.abort(), 12_000)
+
+      return fetch(url, { signal: controller.signal })
+        .then(async (res) => {
+          const data = (await res.json()) as WeatherData & { error?: string; detail?: string }
+          if (!res.ok) {
+            throw new Error(data.error ?? data.detail ?? "날씨를 불러오지 못했습니다.")
+          }
+          if (priority >= fetchPriorityRef.current) {
+            fetchPriorityRef.current = priority
+            setWeather(data)
+            setError(null)
+          }
+        })
+        .catch((e: unknown) => {
+          if (priority < fetchPriorityRef.current) return
+          if (!opts?.keepPrevious) {
+            setWeather(null)
+          }
+          if (e instanceof Error && e.name === "AbortError") {
+            setError("날씨 응답이 지연되고 있습니다. 잠시 후 새로고침해 주세요.")
+          } else {
+            setError(e instanceof Error ? e.message : "날씨를 불러오지 못했습니다.")
+          }
+        })
+        .finally(() => {
+          window.clearTimeout(timer)
+          setLoading(false)
+        })
+    },
+    [],
+  )
 
   const loadWeather = useCallback(
     (lat: number, lon: number) => {
@@ -63,7 +88,7 @@ export function CurrentWeather({
         lat: String(lat),
         lon: String(lon),
       })
-      return fetchWeather(`/api/weather?${params}`)
+      return fetchWeather(`/api/weather?${params}`, { keepPrevious: true, priority: 1 })
     },
     [fetchWeather],
   )
@@ -72,38 +97,40 @@ export function CurrentWeather({
     (city: string, asFallback = false) => {
       setUsingFallback(asFallback)
       const params = new URLSearchParams({ city })
-      return fetchWeather(`/api/weather?${params}`)
+      return fetchWeather(`/api/weather?${params}`, { priority: 0 })
     },
     [fetchWeather],
   )
 
   const requestLocation = useCallback(() => {
+    fetchPriorityRef.current = 0
+    setError(null)
+    setLoading(true)
+
+    if (fallbackCity) {
+      void loadWeatherByCity(fallbackCity, true)
+    }
+
     if (!navigator.geolocation) {
-      if (fallbackCity) {
-        void loadWeatherByCity(fallbackCity, true)
-        return
+      if (!fallbackCity) {
+        setError("이 브라우저는 위치 정보를 지원하지 않습니다.")
+        setLoading(false)
       }
-      setError("이 브라우저는 위치 정보를 지원하지 않습니다.")
-      setLoading(false)
       return
     }
 
-    setLoading(true)
-    setError(null)
-    setUsingFallback(false)
     navigator.geolocation.getCurrentPosition(
       (pos) => {
+        setUsingFallback(false)
         void loadWeather(pos.coords.latitude, pos.coords.longitude)
       },
       () => {
-        if (fallbackCity) {
-          void loadWeatherByCity(fallbackCity, true)
-          return
+        if (!fallbackCity) {
+          setLoading(false)
+          setError("위치 권한이 필요합니다. 브라우저에서 위치 허용 후 다시 시도해 주세요.")
         }
-        setLoading(false)
-        setError("위치 권한이 필요합니다. 브라우저에서 위치 허용 후 다시 시도해 주세요.")
       },
-      { enableHighAccuracy: false, timeout: 15000, maximumAge: 300000 },
+      { enableHighAccuracy: false, timeout: 8000, maximumAge: 300000 },
     )
   }, [fallbackCity, loadWeather, loadWeatherByCity])
 

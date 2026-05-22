@@ -39,7 +39,9 @@ export default function NoticesPage() {
   const [isAdmin, setIsAdmin] = useState(false)
 
   const refresh = () => {
-    setUi((prev) => ({ ...prev, notices: loadNotices() }))
+    loadNotices()
+      .then((notices) => setUi((prev) => ({ ...prev, notices })))
+      .catch(() => setUi((prev) => ({ ...prev, notices: [] })))
     setIsAdmin(canManageNotices())
   }
 
@@ -49,7 +51,7 @@ export default function NoticesPage() {
     return () => window.removeEventListener("focus", refresh)
   }, [])
 
-  const handleSubmit = (e: FormEvent<HTMLFormElement>) => {
+  const handleSubmit = async (e: FormEvent<HTMLFormElement>) => {
     e.preventDefault()
     const authorId = getLoggedInUserId()
     if (!authorId || !canManageNotices()) {
@@ -82,17 +84,29 @@ export default function NoticesPage() {
       return
     }
 
-    addNotice(authorId, title, body)
-    refresh()
-    setFormKey((k) => k + 1)
-    setUi((prev) => ({ ...prev, submitting: false, error: null }))
+    try {
+      await addNotice(authorId, title, body)
+      refresh()
+      setFormKey((k) => k + 1)
+      setUi((prev) => ({ ...prev, submitting: false, error: null }))
+    } catch {
+      setUi((prev) => ({
+        ...prev,
+        submitting: false,
+        error: "공지 등록에 실패했습니다.",
+      }))
+    }
   }
 
-  const handleDelete = (id: string) => {
+  const handleDelete = async (id: string) => {
     if (!canManageNotices()) return
     if (!window.confirm("이 공지를 삭제할까요?")) return
-    deleteNotice(id)
-    refresh()
+    try {
+      await deleteNotice(id)
+      refresh()
+    } catch {
+      setUi((prev) => ({ ...prev, error: "공지 삭제에 실패했습니다." }))
+    }
   }
 
   return (

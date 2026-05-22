@@ -28,7 +28,26 @@ function formatChatError(message: string): string {
   return message
 }
 
-export function GeminiChat({ className }: { className?: string }) {
+type GeminiChatProps = {
+  className?: string
+  /** true면 부모 flex 영역을 채움 (Pace AI 탭 등) */
+  fillHeight?: boolean
+  /** 헤더 제목 (기본: Gemini) */
+  title?: string
+  /** 헤더 부제 */
+  subtitle?: string
+  placeholder?: string
+  emptyMessage?: string
+}
+
+export function GeminiChat({
+  className,
+  fillHeight = false,
+  title = "Gemini",
+  subtitle = "· Pace 홈에서 바로 질문해 보세요",
+  placeholder = "메시지를 입력하세요…",
+  emptyMessage = "헬스케어·데이터·개발 관련해서 무엇이든 물어보세요. 백엔드(FastAPI)가 켜져 있어야 답변이 옵니다.",
+}: GeminiChatProps) {
   const [messages, setMessages] = useState<Msg[]>([])
   const [input, setInput] = useState("")
   const [loading, setLoading] = useState(false)
@@ -92,14 +111,19 @@ export function GeminiChat({ className }: { className?: string }) {
   return (
     <div
       className={cn(
-        "flex h-[min(26rem,50vh)] max-h-[min(26rem,50vh)] min-h-[15rem] w-full flex-col overflow-hidden rounded-2xl border border-border bg-card/60 shadow-sm backdrop-blur-sm sm:min-h-[17rem] lg:h-[min(22rem,42vh)] lg:max-h-[min(22rem,42vh)]",
+        "flex w-full flex-col overflow-hidden rounded-2xl border border-border bg-card/60 shadow-sm backdrop-blur-sm",
+        fillHeight
+          ? "min-h-0 flex-1"
+          : "h-[min(26rem,50vh)] max-h-[min(26rem,50vh)] min-h-[15rem] sm:min-h-[17rem] lg:h-[min(22rem,42vh)] lg:max-h-[min(22rem,42vh)]",
         className,
       )}
     >
       <div className="flex shrink-0 flex-wrap items-center justify-center gap-2 border-b border-border/60 px-4 py-3 text-center">
         <Sparkles className="size-4 shrink-0 text-primary" aria-hidden />
-        <span className="text-sm font-medium text-foreground">Gemini</span>
-        <span className="text-xs text-muted-foreground">· Pace 홈에서 바로 질문해 보세요</span>
+        <span className="text-sm font-medium text-foreground">{title}</span>
+        {subtitle ? (
+          <span className="text-xs text-muted-foreground">{subtitle}</span>
+        ) : null}
       </div>
 
       <div
@@ -108,7 +132,7 @@ export function GeminiChat({ className }: { className?: string }) {
       >
         {messages.length === 0 && (
           <p className="text-xs leading-relaxed text-muted-foreground sm:text-sm">
-            헬스케어·데이터·개발 관련해서 무엇이든 물어보세요. 백엔드(FastAPI)가 켜져 있어야 답변이 옵니다.
+            {emptyMessage}
           </p>
         )}
         {messages.map((m, i) => (
@@ -142,7 +166,7 @@ export function GeminiChat({ className }: { className?: string }) {
           <Textarea
             value={input}
             onChange={(e) => setInput(e.target.value)}
-            placeholder="메시지를 입력하세요…"
+            placeholder={placeholder}
             rows={2}
             disabled={loading}
             className="min-h-[60px] resize-none text-sm"

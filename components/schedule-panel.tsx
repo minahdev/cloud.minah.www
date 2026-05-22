@@ -63,15 +63,23 @@ export function SchedulePanel({ memberUserId, memberLabel }: SchedulePanelProps)
   const [error, setError] = useState<string | null>(null)
   const [saved, setSaved] = useState<string | null>(null)
 
-  const refresh = () => setLessons(loadLessons(memberUserId))
+  const refresh = () => {
+    loadLessons(memberUserId)
+      .then(setLessons)
+      .catch(() => {
+        setLessons([])
+        setError("일정을 불러오지 못했습니다.")
+      })
+  }
 
   useEffect(() => {
     setEditingId(null)
     setError(null)
     setSaved(null)
     refresh()
-    window.addEventListener("focus", refresh)
-    return () => window.removeEventListener("focus", refresh)
+    const onFocus = () => refresh()
+    window.addEventListener("focus", onFocus)
+    return () => window.removeEventListener("focus", onFocus)
   }, [memberUserId])
 
   const selectedKey = scheduleDateKey(selectedDate)
@@ -82,7 +90,7 @@ export function SchedulePanel({ memberUserId, memberLabel }: SchedulePanelProps)
   const loggedDates = useMemo(() => datesWithLessons(lessons), [lessons])
   const selectedLabel = format(selectedDate, "yyyy년 M월 d일 (EEE)", { locale: ko })
 
-  const handleAddLesson = () => {
+  const handleAddLesson = async () => {
     const entry: LessonEntry = {
       id: newId(),
       date: selectedKey,
@@ -94,18 +102,26 @@ export function SchedulePanel({ memberUserId, memberLabel }: SchedulePanelProps)
       memberUserId,
     }
     setEditingId(entry.id)
-    upsertLesson(entry, memberUserId)
-    refresh()
+    try {
+      await upsertLesson(entry, memberUserId)
+      refresh()
+    } catch {
+      setError("레슨 추가에 실패했습니다.")
+    }
   }
 
-  const handleDelete = (id: string) => {
+  const handleDelete = async (id: string) => {
     if (!confirm("이 레슨 일정·기록을 삭제할까요?")) return
-    deleteLesson(id, memberUserId)
-    if (editingId === id) setEditingId(null)
-    refresh()
+    try {
+      await deleteLesson(id, memberUserId)
+      if (editingId === id) setEditingId(null)
+      refresh()
+    } catch {
+      setError("삭제에 실패했습니다.")
+    }
   }
 
-  const handleScheduleSubmit = (e: FormEvent<HTMLFormElement>, lesson: LessonEntry) => {
+  const handleScheduleSubmit = async (e: FormEvent<HTMLFormElement>, lesson: LessonEntry) => {
     e.preventDefault()
     setError(null)
     setSaved(null)
@@ -117,9 +133,13 @@ export function SchedulePanel({ memberUserId, memberLabel }: SchedulePanelProps)
       setError("레슨 제목을 입력해 주세요.")
       return
     }
-    upsertLesson({ ...lesson, title, time, scheduleNote, memberUserId }, memberUserId)
-    refresh()
-    setSaved("일정을 저장했습니다.")
+    try {
+      await upsertLesson({ ...lesson, title, time, scheduleNote, memberUserId }, memberUserId)
+      refresh()
+      setSaved("일정을 저장했습니다.")
+    } catch {
+      setError("일정 저장에 실패했습니다.")
+    }
   }
 
   const handleRecordSubmit = async (e: FormEvent<HTMLFormElement>, lesson: LessonEntry) => {
@@ -170,37 +190,45 @@ export function SchedulePanel({ memberUserId, memberLabel }: SchedulePanelProps)
       return
     }
 
-    upsertLesson(
-      {
-        ...lesson,
-        memberUserId,
-        record: {
-          text,
-          media: newMedia,
-          updatedAt: new Date().toISOString(),
+    try {
+      await upsertLesson(
+        {
+          ...lesson,
+          memberUserId,
+          record: {
+            text,
+            media: newMedia,
+            updatedAt: new Date().toISOString(),
+          },
         },
-      },
-      memberUserId,
-    )
-    refresh()
-    setSaved("레슨 기록을 저장했습니다. 나중에 복습할 수 있어요.")
+        memberUserId,
+      )
+      refresh()
+      setSaved("레슨 기록을 저장했습니다. 나중에 복습할 수 있어요.")
+    } catch {
+      setError("레슨 기록 저장에 실패했습니다.")
+    }
   }
 
-  const removeMedia = (lesson: LessonEntry, mediaId: string) => {
+  const removeMedia = async (lesson: LessonEntry, mediaId: string) => {
     if (!lesson.record) return
-    upsertLesson(
-      {
-        ...lesson,
-        memberUserId,
-        record: {
-          ...lesson.record,
-          media: lesson.record.media.filter((m) => m.id !== mediaId),
-          updatedAt: new Date().toISOString(),
+    try {
+      await upsertLesson(
+        {
+          ...lesson,
+          memberUserId,
+          record: {
+            ...lesson.record,
+            media: lesson.record.media.filter((m) => m.id !== mediaId),
+            updatedAt: new Date().toISOString(),
+          },
         },
-      },
-      memberUserId,
-    )
-    refresh()
+        memberUserId,
+      )
+      refresh()
+    } catch {
+      setError("미디어 삭제에 실패했습니다.")
+    }
   }
 
   return (

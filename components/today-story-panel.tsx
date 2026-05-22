@@ -20,19 +20,31 @@ export function TodayStoryPanel() {
   const [savedMessage, setSavedMessage] = useState<string | null>(null)
 
   useEffect(() => {
-    const saved = loadTodayStory()
-    if (!saved) return
-    setStory(saved.story)
-    setMood(saved.mood)
+    let cancelled = false
+    loadTodayStory()
+      .then((saved) => {
+        if (cancelled || !saved) return
+        setStory(saved.story)
+        setMood(saved.mood)
+      })
+      .catch(() => {})
+    return () => {
+      cancelled = true
+    }
   }, [])
 
-  function onSubmit(e: FormEvent) {
+  async function onSubmit(e: FormEvent) {
     e.preventDefault()
     const text = story.trim()
     if (!text) return
-    saveTodayStory(text, mood, null)
-    setSavedMessage("오늘의 기록을 남겼어요.")
-    window.setTimeout(() => setSavedMessage(null), 3000)
+    try {
+      await saveTodayStory(text, mood, null)
+      setSavedMessage("오늘의 기록을 남겼어요.")
+      window.setTimeout(() => setSavedMessage(null), 3000)
+    } catch {
+      setSavedMessage("저장에 실패했습니다. 로그인 상태를 확인해 주세요.")
+      window.setTimeout(() => setSavedMessage(null), 4000)
+    }
   }
 
   return (

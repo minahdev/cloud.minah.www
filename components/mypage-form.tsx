@@ -2,7 +2,7 @@
 
 import { useRouter } from "next/navigation"
 import { type ChangeEvent, type FormEvent, useEffect, useMemo, useState } from "react"
-import { Activity, Heart, LogOut, Pencil, Save, UserRound, X } from "lucide-react"
+import { Activity, Heart, LogOut, Mars, Pencil, Save, UserRound, Venus, X } from "lucide-react"
 
 import { ScheduleAccessSettings } from "@/components/schedule-access-settings"
 import { clearLoggedInUserId, getLoggedInUserId, getLoggedInUserRole } from "@/lib/auth-session"
@@ -15,12 +15,15 @@ import {
   formatBirthDate,
   getExperienceLabel,
   getFavoriteExerciseLabel,
+  getGenderLabel,
   getWeeklyGoalLabel,
   isValidBirthDate,
   saveMyPageProfileToApi,
   type ExerciseExperience,
   type FavoriteExercise,
+  type Gender,
   type WeeklyExerciseGoal,
+  GENDER_OPTIONS,
   WEEKLY_GOAL_OPTIONS,
 } from "@/lib/mypage-profile"
 
@@ -29,6 +32,7 @@ const inputClass =
 
 type ProfileFields = {
   name: string
+  gender: Gender
   birthDate: string
   phone: string
   heightCm: string
@@ -67,6 +71,7 @@ function hasProfileData(fields: ProfileFields): boolean {
 function pickProfileFields(state: MyPageState): ProfileFields {
   return {
     name: state.name,
+    gender: state.gender,
     birthDate: state.birthDate,
     phone: state.phone,
     heightCm: state.heightCm,
@@ -81,6 +86,7 @@ function pickProfileFields(state: MyPageState): ProfileFields {
 
 const emptyProfileFields: ProfileFields = {
   name: "",
+  gender: "male",
   birthDate: "",
   phone: "",
   heightCm: "",
@@ -162,6 +168,62 @@ function ProfileRow({ label, value }: { label: string; value: string }) {
   )
 }
 
+function GenderIcon({ gender, className }: { gender: Gender; className?: string }) {
+  const cn = className ?? "size-5 shrink-0"
+  if (gender === "female") {
+    return <Venus className={cn} aria-hidden />
+  }
+  return <Mars className={cn} aria-hidden />
+}
+
+function GenderRadioGroup({
+  value,
+  onChange,
+  disabled,
+}: {
+  value: Gender
+  onChange: (v: Gender) => void
+  disabled?: boolean
+}) {
+  return (
+    <fieldset className="space-y-3" disabled={disabled}>
+      <legend className="mb-1 block text-sm font-medium text-foreground">성별</legend>
+      <div className="grid gap-2 sm:grid-cols-2">
+        {GENDER_OPTIONS.map((opt) => {
+          const id = `gender-${opt.value}`
+          const checked = value === opt.value
+          return (
+            <label
+              key={opt.value}
+              htmlFor={id}
+              className={`flex cursor-pointer items-center gap-3 rounded-xl border px-4 py-3 text-sm transition-colors ${
+                checked
+                  ? "border-primary/60 bg-primary/10 text-foreground"
+                  : "border-border bg-secondary/50 text-muted-foreground hover:border-primary/30 hover:text-foreground"
+              }`}
+            >
+              <input
+                type="radio"
+                id={id}
+                name="gender"
+                value={opt.value}
+                checked={checked}
+                onChange={() => onChange(opt.value)}
+                className="sr-only"
+              />
+              <GenderIcon
+                gender={opt.value}
+                className={`size-5 shrink-0 ${checked ? "text-primary" : "text-muted-foreground"}`}
+              />
+              <span className="font-medium">{opt.label}</span>
+            </label>
+          )
+        })}
+      </div>
+    </fieldset>
+  )
+}
+
 function isCoachOrAdmin(role: string | null): boolean {
   return role === "coach" || role === "admin"
 }
@@ -209,6 +271,7 @@ export function MyPageForm({ embedded = false }: { embedded?: boolean }) {
         if (saved) {
           const fields: ProfileFields = {
             name: saved.name,
+            gender: saved.gender,
             birthDate: saved.birthDate,
             phone: saved.phone,
             heightCm: saved.heightCm,
@@ -271,7 +334,12 @@ export function MyPageForm({ embedded = false }: { embedded?: boolean }) {
     const birthDate = String(entries.birthDate ?? "").replace(/\D/g, "")
     const favoriteExercise = String(entries.favoriteExercise ?? "gym") as FavoriteExercise
     const favoriteExerciseOther = String(entries.favoriteExerciseOther ?? "").trim()
+    const gender = String(entries.gender ?? "") as Gender
 
+    if (gender !== "male" && gender !== "female") {
+      patch({ error: "성별을 선택해 주세요." })
+      return
+    }
     if (!isValidBirthDate(birthDate)) {
       patch({ error: "생년월일은 8자리(예: 20030401)로 입력해 주세요." })
       return
@@ -285,6 +353,7 @@ export function MyPageForm({ embedded = false }: { embedded?: boolean }) {
     try {
       const message = await saveMyPageProfileToApi(state.userId, {
         name: String(entries.name ?? "").trim(),
+        gender,
         birthDate,
         phone: String(entries.phone ?? "").trim(),
         heightCm: String(entries.heightCm ?? "").trim(),
@@ -329,6 +398,7 @@ export function MyPageForm({ embedded = false }: { embedded?: boolean }) {
     error,
     savedMessage,
     name,
+    gender,
     birthDate,
     phone,
     heightCm,
@@ -391,6 +461,13 @@ export function MyPageForm({ embedded = false }: { embedded?: boolean }) {
               <h3 className="text-sm font-medium text-muted-foreground">기본 정보</h3>
               <div className="grid gap-3 sm:grid-cols-2">
                 <ProfileRow label="이름" value={name} />
+                <div className="rounded-xl border border-border/70 bg-secondary/25 px-4 py-3">
+                  <p className="text-xs font-medium text-muted-foreground">성별</p>
+                  <p className="mt-1 flex items-center gap-2 text-sm font-medium text-foreground">
+                    <GenderIcon gender={gender} className="size-4 text-primary" />
+                    {getGenderLabel(gender)}
+                  </p>
+                </div>
                 <ProfileRow label="생년월일" value={formatBirthDate(birthDate)} />
                 <ProfileRow label="전화번호" value={phone} />
               </div>
@@ -475,6 +552,13 @@ export function MyPageForm({ embedded = false }: { embedded?: boolean }) {
                 placeholder="홍길동"
                 value={name}
                 onChange={handleChange}
+              />
+            </div>
+            <div className="sm:col-span-2">
+              <GenderRadioGroup
+                value={gender}
+                onChange={(v) => patch({ gender: v })}
+                disabled={submitting}
               />
             </div>
             <div>

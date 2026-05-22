@@ -1,6 +1,7 @@
-/** 앱 공지사항 (localStorage) */
+/** 앱 공지사항 (Neon / inbody API) */
 
-export const PACE_NOTICES_KEY = "pace-notices"
+import { getLoggedInUserId } from "@/lib/auth-session"
+import { inbodyFetch, withUserId } from "@/lib/inbody-api"
 
 export type Notice = {
   id: string
@@ -9,16 +10,6 @@ export type Notice = {
   authorId: string
   createdAt: string
 }
-
-const SEED_NOTICES: Notice[] = [
-  {
-    id: "notice-welcome",
-    title: "Pace에 오신 것을 환영합니다",
-    body: "훈련·분석·커뮤니티·공지 기능을 이용해 보세요. 훈련 탭에서 식단 칼로리도 기록할 수 있습니다.",
-    authorId: "pace_admin",
-    createdAt: "2026-05-15T09:00:00.000Z",
-  },
-]
 
 function isNotice(row: unknown): row is Notice {
   if (row === null || typeof row !== "object") return false
@@ -32,39 +23,26 @@ function isNotice(row: unknown): row is Notice {
   )
 }
 
-export function loadNotices(): Notice[] {
-  if (typeof window === "undefined") return []
-  try {
-    const raw = localStorage.getItem(PACE_NOTICES_KEY)
-    if (!raw) {
-      localStorage.setItem(PACE_NOTICES_KEY, JSON.stringify(SEED_NOTICES))
-      return [...SEED_NOTICES]
-    }
-    const parsed = JSON.parse(raw) as unknown
-    if (!Array.isArray(parsed)) return []
-    return parsed
-      .filter(isNotice)
-      .sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime())
-  } catch {
-    return []
-  }
+export async function loadNotices(): Promise<Notice[]> {
+  const rows = await inbodyFetch<unknown[]>("/api/inbody/notices")
+  if (!Array.isArray(rows)) return []
+  return rows
+    .filter(isNotice)
+    .sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime())
 }
 
-export function addNotice(authorId: string, title: string, body: string): Notice {
-  const notice: Notice = {
-    id: `notice-${Date.now()}`,
-    title: title.trim(),
-    body: body.trim(),
-    authorId,
-    createdAt: new Date().toISOString(),
-  }
-  const rest = loadNotices()
-  rest.unshift(notice)
-  localStorage.setItem(PACE_NOTICES_KEY, JSON.stringify(rest))
-  return notice
+export async function addNotice(authorId: string, title: string, body: string): Promise<Notice> {
+  const userId = getLoggedInUserId() ?? authorId
+  return inbodyFetch<Notice>("/api/inbody/notices", {
+    method: "POST",
+    body: JSON.stringify({ userId, title: title.trim(), body: body.trim() }),
+  })
 }
 
-export function deleteNotice(id: string): void {
-  const rest = loadNotices().filter((n) => n.id !== id)
-  localStorage.setItem(PACE_NOTICES_KEY, JSON.stringify(rest))
+export async function deleteNotice(id: string): Promise<void> {
+  const userId = getLoggedInUserId()
+  if (!userId) throw new Error("로그인이 필요합니다.")
+  await inbodyFetch(withUserId(`/api/inbody/notices/${encodeURIComponent(id)}`, userId), {
+    method: "DELETE",
+  })
 }

@@ -15,7 +15,7 @@ import {
   emptyDiet,
   type TrainDailyLog,
   type TrainDiet,
-  getTodayTrainLog,
+  fetchTodayTrainLog,
   saveTodayTrainLog,
 } from "@/lib/pace-train-storage"
 import { cn } from "@/lib/utils"
@@ -50,15 +50,23 @@ export function TrainPanel({ embedded = false }: { embedded?: boolean }) {
   const [formKey, setFormKey] = useState(0)
 
   useEffect(() => {
-    const log = getTodayTrainLog()
-    setInitial(log)
-    if (log) {
-      setUi((prev) => ({ ...prev, muscles: log.muscles }))
-      setDiet(log.diet)
+    let cancelled = false
+    fetchTodayTrainLog()
+      .then((log) => {
+        if (cancelled) return
+        setInitial(log)
+        if (log) {
+          setUi((prev) => ({ ...prev, muscles: log.muscles }))
+          setDiet(log.diet)
+        }
+      })
+      .catch(() => setInitial(null))
+    return () => {
+      cancelled = true
     }
   }, [])
 
-  const handleSubmit = (e: FormEvent<HTMLFormElement>) => {
+  const handleSubmit = async (e: FormEvent<HTMLFormElement>) => {
     e.preventDefault()
     setUi((prev) => ({ ...prev, error: null, saved: null, submitting: true }))
 
@@ -96,23 +104,31 @@ export function TrainPanel({ embedded = false }: { embedded?: boolean }) {
       supplements,
     }
 
-    saveTodayTrainLog({
-      muscles: ui.muscles,
-      workout,
-      weightKg,
-      diet: dietToSave,
-      memo,
-      exerciseMinutes: null,
-    })
-    setDiet(dietToSave)
-
-    setUi((prev) => ({
-      ...prev,
-      submitting: false,
-      saved: "오늘 기록을 저장했습니다. 마이페이지 분석 탭에서 그래프를 확인할 수 있어요.",
-    }))
-    setInitial(getTodayTrainLog())
-    setFormKey((k) => k + 1)
+    try {
+      await saveTodayTrainLog({
+        muscles: ui.muscles,
+        workout,
+        weightKg,
+        diet: dietToSave,
+        memo,
+        exerciseMinutes: null,
+      })
+      setDiet(dietToSave)
+      const log = await fetchTodayTrainLog()
+      setInitial(log)
+      setUi((prev) => ({
+        ...prev,
+        submitting: false,
+        saved: "오늘 기록을 저장했습니다. 마이페이지 분석 탭에서 그래프를 확인할 수 있어요.",
+      }))
+      setFormKey((k) => k + 1)
+    } catch {
+      setUi((prev) => ({
+        ...prev,
+        submitting: false,
+        error: "저장에 실패했습니다. 로그인 상태를 확인해 주세요.",
+      }))
+    }
   }
 
   const totalDietKcal = dietTotalKcal(diet)

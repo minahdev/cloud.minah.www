@@ -33,6 +33,7 @@ export async function GET(req: Request) {
   try {
     const res = await fetch(`${backendBase}/weather?${qs.toString()}`, {
       cache: "no-store",
+      signal: AbortSignal.timeout(12_000),
     })
     const data: unknown = await res.json().catch(() => ({}))
 
@@ -44,13 +45,17 @@ export async function GET(req: Request) {
     }
 
     return Response.json(data)
-  } catch {
+  } catch (e: unknown) {
+    const timedOut =
+      e instanceof Error &&
+      (e.name === "TimeoutError" || e.name === "AbortError" || e.message.includes("timeout"))
     return Response.json(
       {
-        error:
-          "백엔드에 연결할 수 없습니다. FastAPI(uvicorn)가 실행 중인지 확인하세요.",
+        error: timedOut
+          ? "날씨 서버 응답이 지연되고 있습니다. 잠시 후 다시 시도해 주세요."
+          : "백엔드에 연결할 수 없습니다. FastAPI(uvicorn)가 실행 중인지 확인하세요.",
       },
-      { status: 503 },
+      { status: timedOut ? 504 : 503 },
     )
   }
 }

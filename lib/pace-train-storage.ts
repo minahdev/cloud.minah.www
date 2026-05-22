@@ -1,5 +1,7 @@
-/** 브라우저에 저장되는 일일 훈련 로그 (분석 탭 차트용) */
+/** 일일 훈련 로그 (Neon / inbody API) */
 
+import { getLoggedInUserId } from "@/lib/auth-session"
+import { inbodyFetch, withUserId } from "@/lib/inbody-api"
 import type { FoodNutritionPer100g } from "@/lib/pace-custom-foods-storage"
 
 export const PACE_TRAIN_LOGS_KEY = "pace-train-daily-logs"
@@ -198,47 +200,49 @@ function normalizeLog(row: unknown): TrainDailyLog | null {
   }
 }
 
-export function loadTrainLogs(): TrainDailyLog[] {
-  if (typeof window === "undefined") return []
-  try {
-    const raw = localStorage.getItem(PACE_TRAIN_LOGS_KEY)
-    if (!raw) return []
-    const parsed = JSON.parse(raw) as unknown
-    if (!Array.isArray(parsed)) return []
-    return parsed.map(normalizeLog).filter((l): l is TrainDailyLog => l !== null)
-  } catch {
-    return []
-  }
+export async function loadTrainLogs(): Promise<TrainDailyLog[]> {
+  const userId = getLoggedInUserId()
+  if (!userId) return []
+  const rows = await inbodyFetch<unknown[]>(withUserId("/api/inbody/train-logs", userId))
+  if (!Array.isArray(rows)) return []
+  return rows.map(normalizeLog).filter((l): l is TrainDailyLog => l !== null)
 }
 
-export function getTodayTrainLog(): TrainDailyLog | null {
+export async function fetchTodayTrainLog(): Promise<TrainDailyLog | null> {
+  const userId = getLoggedInUserId()
+  if (!userId) return null
   const key = trainLogTodayKey()
-  return loadTrainLogs().find((l) => l.date === key) ?? null
+  const row = await inbodyFetch<unknown | null>(
+    withUserId("/api/inbody/train-logs", userId, { date: key }),
+  )
+  if (!row) return null
+  return normalizeLog(row)
 }
 
-export function saveTodayTrainLog(fields: {
+export async function saveTodayTrainLog(fields: {
   muscles: string[]
   workout: string
   weightKg: number | null
   diet: TrainDiet
   memo: string
   exerciseMinutes: number | null
-}): void {
-  if (typeof window === "undefined") return
+}): Promise<void> {
+  const userId = getLoggedInUserId()
+  if (!userId) throw new Error("로그인이 필요합니다.")
   const date = trainLogTodayKey()
-  const next: TrainDailyLog = {
-    date,
-    muscles: fields.muscles,
-    workout: fields.workout,
-    weightKg: fields.weightKg,
-    diet: fields.diet,
-    memo: fields.memo,
-    exerciseMinutes: fields.exerciseMinutes,
-  }
-  const rest = loadTrainLogs().filter((l) => l.date !== date)
-  rest.push(next)
-  rest.sort((a, b) => a.date.localeCompare(b.date))
-  localStorage.setItem(PACE_TRAIN_LOGS_KEY, JSON.stringify(rest))
+  await inbodyFetch("/api/inbody/train-logs", {
+    method: "PUT",
+    body: JSON.stringify({
+      userId,
+      date,
+      muscles: fields.muscles,
+      workout: fields.workout,
+      weightKg: fields.weightKg,
+      diet: fields.diet,
+      memo: fields.memo,
+      exerciseMinutes: fields.exerciseMinutes,
+    }),
+  })
 }
 
 export function hasWorkoutActivity(log: TrainDailyLog): boolean {
