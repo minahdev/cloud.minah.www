@@ -22,7 +22,7 @@ function formatChatError(message: string): string {
     return (
       "Gemini API 키가 만료되었거나 잘못되었습니다. " +
       "https://aistudio.google.com/apikey 에서 새 키를 발급한 뒤 " +
-      "backend/.env 의 GEMINI_API_KEY 를 갱신하고 백엔드(uvicorn)를 재시작하세요."
+      "frontend/.env.local 또는 Vercel GEMINI_API_KEY 를 갱신하고 재배포하세요."
     )
   }
   return message
@@ -46,7 +46,7 @@ export function GeminiChat({
   title = "Gemini",
   subtitle = "· Pace 홈에서 바로 질문해 보세요",
   placeholder = "메시지를 입력하세요…",
-  emptyMessage = "헬스케어·데이터·개발 관련해서 무엇이든 물어보세요. 백엔드(FastAPI)가 켜져 있어야 답변이 옵니다.",
+  emptyMessage = "헬스케어·데이터·개발 관련해서 무엇이든 물어보세요.",
 }: GeminiChatProps) {
   const [messages, setMessages] = useState<Msg[]>([])
   const [input, setInput] = useState("")
