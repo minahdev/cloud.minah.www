@@ -1,6 +1,6 @@
 import { NextResponse } from "next/server"
 
-const backendBase = (process.env.BACKEND_URL ?? "http://127.0.0.1:8000").replace(/\/$/, "")
+const backendBase = (process.env.BACKEND_URL ?? "http://localhost:8000").replace(/\/$/, "")
 
 function err(data: unknown, fallback: string) {
   if (!data || typeof data !== "object") return fallback
