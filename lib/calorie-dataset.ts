@@ -1,11 +1,35 @@
+import mafraFoodsJson from "@/data/mafra-calorie-foods.json"
+
+export type FoodCategory =
+  | "밥/면/빵"
+  | "고기/생선/달걀"
+  | "유제품"
+  | "과일"
+  | "채소"
+  | "간식/음료"
+  | "기타"
+
+export type ServingNutrition = {
+  carbsG: number
+  proteinG: number
+  fatG: number
+}
+
 export type FoodRecord = {
   id: string
   name: string
-  category: "밥/면/빵" | "고기/생선/달걀" | "유제품" | "과일" | "채소" | "간식/음료" | "기타"
+  category: FoodCategory
   kcalPer100g: number
   defaultServingG: number
+  /** 농림부 CSV 1인분 칼로리 (있으면 defaultServingG = 1인분 추정 중량) */
+  kcalPerServing?: number
+  servingNutrition?: ServingNutrition
   aliases?: string[]
 }
+
+type MafraFoodJson = FoodRecord
+
+export const MAFRA_FOOD_DATASET: FoodRecord[] = mafraFoodsJson as MafraFoodJson[]
 
 export const FOOD_DATASET: FoodRecord[] = [
   {
@@ -137,13 +161,14 @@ export function normalizeQuery(q: string) {
 export function matchesFood(food: FoodRecord, q: string): boolean {
   const query = normalizeQuery(q)
   if (!query) return true
-  const hay = [
-    food.name,
-    food.category,
-    ...(food.aliases ?? []),
-  ]
-    .join(" ")
-    .toLowerCase()
+  const hay = [food.name, food.category, ...(food.aliases ?? [])].join(" ").toLowerCase()
   return hay.includes(query)
+}
+
+export function foodKcalLabel(food: Pick<FoodRecord, "kcalPer100g" | "kcalPerServing" | "defaultServingG">): string {
+  if (food.kcalPerServing != null) {
+    return `1인분 ${food.kcalPerServing.toLocaleString()} kcal (약 ${food.defaultServingG}g)`
+  }
+  return `${food.kcalPer100g} kcal/100g`
 }
 

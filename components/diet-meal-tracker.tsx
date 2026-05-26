@@ -9,6 +9,7 @@ import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { Textarea } from "@/components/ui/textarea"
+import { foodKcalLabel } from "@/lib/calorie-dataset"
 import { kcalForFood } from "@/lib/calorie-utils"
 import { formatNutritionBrief, hasNutritionData } from "@/lib/format-nutrition"
 import { isCustomFood, searchFoods, type SearchableFood } from "@/lib/food-search"
@@ -113,7 +114,7 @@ export function DietMealTracker({ label, meal, onChange }: DietMealTrackerProps)
                     ) : null}
                   </p>
                   <p className="text-[10px] text-muted-foreground">
-                    {food.kcalPer100g} kcal/100g · {grams}g ≈ {kcalForFood(food, grams)} kcal
+                    {foodKcalLabel(food)} · {grams}g ≈ {kcalForFood(food, grams).toLocaleString()} kcal
                   </p>
                   {isCustomFood(food) && hasNutritionData(food.nutrition) ? (
                     <p className="mt-0.5 text-[10px] text-muted-foreground/90">
@@ -127,7 +128,11 @@ export function DietMealTracker({ label, meal, onChange }: DietMealTrackerProps)
                   variant="outline"
                   className="h-7 shrink-0 px-2 text-xs"
                   onClick={() => {
-                    onChange(addFoodFromSearch(meal, food, grams))
+                    const addG =
+                      food.kcalPerServing != null && grams === 100
+                        ? food.defaultServingG
+                        : grams
+                    onChange(addFoodFromSearch(meal, food, addG))
                     setQuery("")
                   }}
                 >
