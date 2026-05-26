@@ -55,7 +55,7 @@ export function TodayStoryPanel() {
           오늘은 어떠셨나요?
         </CardTitle>
         <p className="text-xs text-muted-foreground sm:text-sm">
-          오늘의 기분과 하루를 편하게 적어 두세요.
+          오늘의 기분과 하루를 편하게 적어주세요.
         </p>
       </CardHeader>
 
@@ -88,7 +88,7 @@ export function TodayStoryPanel() {
           <Textarea
             value={story}
             onChange={(e) => setStory(e.target.value)}
-            placeholder="오늘 있었던 일, 기분, 몸 상태를 자유롭게 적어 주세요."
+            placeholder="오늘 있었던 일, 기분, 몸 상태를 자유롭게 적어주세요."
             rows={4}
             className="min-h-[100px] w-full resize-none text-left text-sm leading-relaxed"
           />

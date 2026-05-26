@@ -13,7 +13,7 @@ export function Footer() {
         </Link>
 
         <p className="text-sm text-muted-foreground">
-          © 2026 Pace. Healthcare Developer Portfolio.
+          © 2026 Pace. Healthcare application.
         </p>
 
         <div className="flex items-center gap-6">
