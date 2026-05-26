@@ -1,60 +1,43 @@
 "use client"
 
-import { FormEvent, useState } from "react"
+import { useState } from "react"
 import { KeyRound } from "lucide-react"
 
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
-import { Input } from "@/components/ui/input"
-import { Label } from "@/components/ui/label"
 import { getLoggedInUserId } from "@/lib/auth-session"
-import { setScheduleAccessPassword } from "@/lib/pace-schedule-access"
+import { createScheduleInviteCode } from "@/lib/pace-schedule-access"
 
 type ScheduleAccessSettingsProps = {
-  configured: boolean
-  onConfiguredChange: (configured: boolean) => void
+  onCodeIssued?: () => void
   className?: string
 }
 
-export function ScheduleAccessSettings({
-  configured,
-  onConfiguredChange,
-  className,
-}: ScheduleAccessSettingsProps) {
-  const [password, setPassword] = useState("")
-  const [confirm, setConfirm] = useState("")
+export function ScheduleAccessSettings({ onCodeIssued, className }: ScheduleAccessSettingsProps) {
+  const [issuedCode, setIssuedCode] = useState<string | null>(null)
+  const [expiresAt, setExpiresAt] = useState<string | null>(null)
   const [error, setError] = useState<string | null>(null)
-  const [saved, setSaved] = useState<string | null>(null)
   const [loading, setLoading] = useState(false)
 
-  const handleSubmit = async (e: FormEvent) => {
-    e.preventDefault()
+  const handleIssue = async () => {
     setError(null)
-    setSaved(null)
+    setIssuedCode(null)
+    setExpiresAt(null)
 
     const userId = getLoggedInUserId()
     if (!userId) {
       setError("로그인이 필요합니다.")
       return
     }
-    if (password.length < 4) {
-      setError("접근 암호는 4자 이상으로 설정해 주세요.")
-      return
-    }
-    if (password !== confirm) {
-      setError("암호 확인이 일치하지 않습니다.")
-      return
-    }
 
     setLoading(true)
     try {
-      await setScheduleAccessPassword(userId, password)
-      setPassword("")
-      setConfirm("")
-      setSaved("회원용 접근 암호가 저장되었습니다.")
-      onConfiguredChange(true)
+      const result = await createScheduleInviteCode(userId)
+      setIssuedCode(result.code)
+      setExpiresAt(result.expiresAt)
+      onCodeIssued?.()
     } catch (err) {
-      setError(err instanceof Error ? err.message : "저장에 실패했습니다.")
+      setError(err instanceof Error ? err.message : "발급에 실패했습니다.")
     } finally {
       setLoading(false)
     }
@@ -69,52 +52,39 @@ export function ScheduleAccessSettings({
       <CardHeader>
         <CardTitle className="flex items-center gap-2 text-lg">
           <KeyRound className="h-5 w-5 text-primary" aria-hidden />
-          회원 접근 암호
+          회원 입장 코드
         </CardTitle>
         <CardDescription>
-          {configured
-            ? "회원은 스케줄 입장 시 아래 암호를 입력해야 합니다. 암호를 바꾸면 입장 기록이 초기화되어 회원 탭이 비워지고, 회원은 다시 입력해야 합니다."
-            : "아직 접근 암호가 없습니다. 설정 후 회원이 암호를 입력하면 회원 탭에 표시됩니다."}
+          로그인한 회원에게 일회용 입장 코드를 발급하세요. 회원이 스케줄 화면에서 코드를 입력하면
+          레슨 스케줄에 입장할 수 있고, 코치 회원 탭에 표시됩니다. 코드는 7일 후 만료되며 1회만
+          사용할 수 있습니다.
         </CardDescription>
       </CardHeader>
-      <CardContent>
-        <form onSubmit={handleSubmit} className="grid gap-4 sm:grid-cols-2">
-          <div className="space-y-2 sm:col-span-1">
-            <Label htmlFor="coach-schedule-password">새 접근 암호</Label>
-            <Input
-              id="coach-schedule-password"
-              type="password"
-              autoComplete="new-password"
-              value={password}
-              onChange={(e) => setPassword(e.target.value)}
-              minLength={4}
-              required
-            />
-          </div>
-          <div className="space-y-2 sm:col-span-1">
-            <Label htmlFor="coach-schedule-password-confirm">암호 확인</Label>
-            <Input
-              id="coach-schedule-password-confirm"
-              type="password"
-              autoComplete="new-password"
-              value={confirm}
-              onChange={(e) => setConfirm(e.target.value)}
-              minLength={4}
-              required
-            />
-          </div>
-          <div className="flex flex-wrap items-center gap-3 sm:col-span-2">
-            <Button type="submit" disabled={loading}>
-              {loading ? "저장 중…" : configured ? "암호 변경" : "암호 설정"}
-            </Button>
-            {saved ? <p className="text-sm text-primary">{saved}</p> : null}
-            {error ? (
-              <p className="text-sm text-destructive" role="alert">
-                {error}
+      <CardContent className="space-y-4">
+        <Button type="button" onClick={handleIssue} disabled={loading}>
+          {loading ? "발급 중…" : "입장 코드 발급"}
+        </Button>
+
+        {issuedCode ? (
+          <div
+            className="rounded-xl border border-primary/30 bg-primary/10 px-4 py-3 text-sm"
+            role="status"
+          >
+            <p className="font-medium text-foreground">발급된 코드 (이 화면에서만 다시 확인 가능)</p>
+            <p className="mt-2 font-mono text-2xl tracking-widest text-primary">{issuedCode}</p>
+            {expiresAt ? (
+              <p className="mt-2 text-xs text-muted-foreground">
+                만료: {new Date(expiresAt).toLocaleString("ko-KR")}
               </p>
             ) : null}
           </div>
-        </form>
+        ) : null}
+
+        {error ? (
+          <p className="text-sm text-destructive" role="alert">
+            {error}
+          </p>
+        ) : null}
       </CardContent>
     </Card>
   )

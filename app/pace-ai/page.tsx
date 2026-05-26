@@ -27,7 +27,7 @@ export default function PaceAiPage() {
           title="Pace AI"
           subtitle=""
           placeholder="궁금한 점을 입력하세요… (Enter 전송, Shift+Enter 줄바꿈)"
-          emptyMessage="예: 오늘 하체 운동 후 무릎이 뻐근해요. 스트레칭 추천해 줄 수 있어? · 답변을 받으려면 백엔드(FastAPI)가 실행 중이어야 합니다."
+          emptyMessage="예: 오늘 하체 운동 후 무릎이 뻐근해요. 스트레칭 추천해 줄 수 있어?"
         />
 
         <p className="mt-4 shrink-0 text-center text-xs text-muted-foreground md:text-left">

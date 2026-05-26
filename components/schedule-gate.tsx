@@ -9,8 +9,8 @@ import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { getLoggedInUserId } from "@/lib/auth-session"
 import {
+  redeemScheduleInviteCode,
   setScheduleUnlocked,
-  verifyScheduleAccessPassword,
 } from "@/lib/pace-schedule-access"
 
 type ScheduleGateProps = {
@@ -18,7 +18,7 @@ type ScheduleGateProps = {
 }
 
 export function ScheduleGate({ onUnlocked }: ScheduleGateProps) {
-  const [password, setPassword] = useState("")
+  const [code, setCode] = useState("")
   const [error, setError] = useState<string | null>(null)
   const [loading, setLoading] = useState(false)
 
@@ -33,11 +33,11 @@ export function ScheduleGate({ onUnlocked }: ScheduleGateProps) {
       return
     }
     try {
-      await verifyScheduleAccessPassword(userId, password)
+      await redeemScheduleInviteCode(userId, code)
       setScheduleUnlocked()
       onUnlocked()
     } catch (err) {
-      setError(err instanceof Error ? err.message : "접근 암호 확인에 실패했습니다.")
+      setError(err instanceof Error ? err.message : "입장 코드 확인에 실패했습니다.")
     } finally {
       setLoading(false)
     }
@@ -48,24 +48,26 @@ export function ScheduleGate({ onUnlocked }: ScheduleGateProps) {
       <CardHeader>
         <CardTitle className="flex items-center gap-2 text-xl">
           <LockKeyhole className="h-5 w-5 text-primary" aria-hidden />
-          스케줄 접근
+          스케줄 입장
         </CardTitle>
         <CardDescription>
-          코치가 설정한 접근 암호를 입력하면 레슨 스케줄을 이용할 수 있습니다. 한 번 맞게 입력하면
-          코치 스케줄 회원 목록에도 표시됩니다.
+          코치에게 받은 입장 코드를 입력하면 레슨 스케줄을 이용할 수 있습니다. 로그인한 회원만
+          사용할 수 있으며, 코드는 일반적으로 1회만 사용됩니다.
         </CardDescription>
       </CardHeader>
       <CardContent>
         <form onSubmit={handleSubmit} className="space-y-4">
           <div className="space-y-2">
-            <Label htmlFor="schedule-access-password">접근 암호</Label>
+            <Label htmlFor="schedule-invite-code">입장 코드</Label>
             <Input
-              id="schedule-access-password"
-              type="password"
+              id="schedule-invite-code"
+              type="text"
               autoComplete="off"
-              value={password}
-              onChange={(e) => setPassword(e.target.value)}
-              placeholder="코치에게 안내받은 암호"
+              autoCapitalize="characters"
+              spellCheck={false}
+              value={code}
+              onChange={(e) => setCode(e.target.value.toUpperCase())}
+              placeholder="예: A1B2C3D4"
               required
             />
           </div>

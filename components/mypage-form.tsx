@@ -6,7 +6,6 @@ import { Activity, Heart, LogOut, Mars, Pencil, Save, UserRound, Venus, X } from
 
 import { ScheduleAccessSettings } from "@/components/schedule-access-settings"
 import { clearLoggedInUserId, getLoggedInUserId, getLoggedInUserRole } from "@/lib/auth-session"
-import { fetchScheduleAccessStatus } from "@/lib/pace-schedule-access"
 import {
   calcBmi,
   EXPERIENCE_OPTIONS,
@@ -232,7 +231,6 @@ export function MyPageForm({ embedded = false }: { embedded?: boolean }) {
   const router = useRouter()
   const [state, setState] = useState<MyPageState>(initialState)
   const [editSnapshot, setEditSnapshot] = useState<ProfileFields | null>(null)
-  const [scheduleAccessConfigured, setScheduleAccessConfigured] = useState<boolean | null>(null)
   const coachView = isCoachOrAdmin(getLoggedInUserRole())
 
   function handleLogout() {
@@ -300,21 +298,6 @@ export function MyPageForm({ embedded = false }: { embedded?: boolean }) {
       }
     })()
   }, [])
-
-  useEffect(() => {
-    if (!coachView) return
-    let cancelled = false
-    void fetchScheduleAccessStatus()
-      .then(({ configured }) => {
-        if (!cancelled) setScheduleAccessConfigured(configured)
-      })
-      .catch(() => {
-        if (!cancelled) setScheduleAccessConfigured(false)
-      })
-    return () => {
-      cancelled = true
-    }
-  }, [coachView])
 
   const bmi = useMemo(
     () => calcBmi(state.heightCm, state.weightKg),
@@ -727,13 +710,9 @@ export function MyPageForm({ embedded = false }: { embedded?: boolean }) {
         )}
       </div>
 
-      {coachView && scheduleAccessConfigured !== null ? (
+      {coachView ? (
         <div className="mt-8">
-          <ScheduleAccessSettings
-            configured={scheduleAccessConfigured}
-            onConfiguredChange={setScheduleAccessConfigured}
-            className="border-dashed border-primary/30 bg-secondary/20"
-          />
+          <ScheduleAccessSettings className="border-dashed border-primary/30 bg-secondary/20" />
         </div>
       ) : null}
 

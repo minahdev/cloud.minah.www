@@ -12,6 +12,16 @@ import {
   Trash2,
 } from "lucide-react"
 
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog"
 import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
 import { Calendar } from "@/components/ui/calendar"
@@ -34,6 +44,10 @@ const MAX_IMAGE_BYTES = 800_000
 const MAX_VIDEO_BYTES = 5_000_000
 const MAX_IMAGES = 4
 const MAX_VIDEOS = 2
+
+/** 다크 UI에서 type=time 기본 시계 아이콘이 검게 보이는 문제 */
+const TIME_INPUT_CLASS =
+  "dark:[color-scheme:dark] [&::-webkit-calendar-picker-indicator]:cursor-pointer dark:[&::-webkit-calendar-picker-indicator]:invert dark:[&::-webkit-calendar-picker-indicator]:opacity-90"
 
 async function fileToDataUrl(file: File): Promise<string> {
   return new Promise((resolve, reject) => {
@@ -62,6 +76,8 @@ export function SchedulePanel({ memberUserId, memberLabel }: SchedulePanelProps)
   const [editingId, setEditingId] = useState<string | null>(null)
   const [error, setError] = useState<string | null>(null)
   const [saved, setSaved] = useState<string | null>(null)
+  const [deleteTargetId, setDeleteTargetId] = useState<string | null>(null)
+  const [deleting, setDeleting] = useState(false)
 
   const refresh = () => {
     loadLessons(memberUserId)
@@ -110,14 +126,19 @@ export function SchedulePanel({ memberUserId, memberLabel }: SchedulePanelProps)
     }
   }
 
-  const handleDelete = async (id: string) => {
-    if (!confirm("이 레슨 일정·기록을 삭제할까요?")) return
+  const confirmDelete = async () => {
+    if (!deleteTargetId) return
+    setDeleting(true)
+    setError(null)
     try {
-      await deleteLesson(id, memberUserId)
-      if (editingId === id) setEditingId(null)
+      await deleteLesson(deleteTargetId, memberUserId)
+      if (editingId === deleteTargetId) setEditingId(null)
+      setDeleteTargetId(null)
       refresh()
     } catch {
       setError("삭제에 실패했습니다.")
+    } finally {
+      setDeleting(false)
     }
   }
 
@@ -332,7 +353,7 @@ export function SchedulePanel({ memberUserId, memberLabel }: SchedulePanelProps)
                       variant="ghost"
                       size="icon"
                       className="text-destructive hover:text-destructive"
-                      onClick={() => handleDelete(lesson.id)}
+                      onClick={() => setDeleteTargetId(lesson.id)}
                       aria-label="레슨 삭제"
                     >
                       <Trash2 className="h-4 w-4" />
@@ -369,6 +390,7 @@ export function SchedulePanel({ memberUserId, memberLabel }: SchedulePanelProps)
                           name="time"
                           type="time"
                           defaultValue={lesson.time}
+                          className={TIME_INPUT_CLASS}
                         />
                       </div>
                     </div>
@@ -495,6 +517,33 @@ export function SchedulePanel({ memberUserId, memberLabel }: SchedulePanelProps)
           )
         })}
       </div>
+
+      <AlertDialog
+        open={deleteTargetId !== null}
+        onOpenChange={(open) => {
+          if (!open && !deleting) setDeleteTargetId(null)
+        }}
+      >
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>레슨 삭제</AlertDialogTitle>
+            <AlertDialogDescription>레슨을 삭제하시겠습니까? 삭제 후 복구가 불가능합니다.</AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel disabled={deleting}>취소</AlertDialogCancel>
+            <AlertDialogAction
+              disabled={deleting}
+              className="bg-destructive text-white hover:bg-destructive/90"
+              onClick={(e) => {
+                e.preventDefault()
+                void confirmDelete()
+              }}
+            >
+              {deleting ? "삭제 중…" : "삭제"}
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </div>
   )
 }

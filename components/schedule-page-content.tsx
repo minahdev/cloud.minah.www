@@ -62,10 +62,6 @@ export function SchedulePageContent() {
           setUnlocked(true)
           return
         }
-        if (!isOn) {
-          setUnlocked(true)
-          return
-        }
         if (!selfUserId) {
           clearScheduleUnlocked()
           setUnlocked(false)
@@ -105,8 +101,7 @@ export function SchedulePageContent() {
   )
 
   const panelMemberId = coachView ? activeMemberId : selfUserId
-  const showPanel =
-    configured !== null && (coachView || unlocked || !configured) && Boolean(panelMemberId)
+  const showPanel = configured !== null && (coachView || unlocked) && Boolean(panelMemberId)
 
   return (
     <RequireAuth loginRedirect="/schedule">
@@ -135,11 +130,11 @@ export function SchedulePageContent() {
             <div className="min-h-[12rem] animate-pulse rounded-2xl bg-secondary/30" aria-hidden />
           ) : null}
 
-          {configured !== null && !coachView && configured && !unlocked ? (
+          {configured !== null && !coachView && !unlocked ? (
             <ScheduleGate onUnlocked={() => setUnlocked(true)} />
           ) : null}
 
-          {coachView && configured !== null && (coachView || unlocked || !configured) ? (
+          {coachView && configured !== null ? (
             <>
               {membersError ? (
                 <p className="mb-4 text-sm text-destructive" role="alert">
@@ -154,9 +149,8 @@ export function SchedulePageContent() {
                 />
               ) : members.length === 0 && !membersError ? (
                 <p className="mb-6 rounded-xl border border-dashed border-border bg-secondary/25 px-4 py-8 text-center text-sm text-muted-foreground">
-                  {configured
-                    ? "접근 암호를 맞게 입력한 회원만 표시됩니다. 회원이 스케줄 입장 화면에서 암호를 입력하면 여기에 나타납니다."
-                    : "마이페이지에서 회원 접근 암호를 설정하세요. 설정 후 회원이 암호를 입력하면 탭에 표시됩니다."}
+                  입장 코드를 사용한 회원만 표시됩니다. 마이페이지에서 코드를 발급한 뒤 회원이
+                  스케줄 화면에서 코드를 입력하면 여기에 나타납니다.
                 </p>
               ) : null}
             </>

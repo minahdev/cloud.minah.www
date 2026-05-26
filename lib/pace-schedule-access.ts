@@ -57,6 +57,48 @@ export async function verifyScheduleAccessPassword(
   }
 }
 
+export type ScheduleInviteCreated = {
+  code: string
+  expiresAt: string
+}
+
+export async function createScheduleInviteCode(userId: string): Promise<ScheduleInviteCreated> {
+  const res = await fetch("/api/schedule/invites", {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ userId }),
+  })
+  const data: unknown = await res.json().catch(() => ({}))
+  if (!res.ok) {
+    throw new Error(
+      typeof data === "object" && data && "error" in data && typeof (data as { error: string }).error === "string"
+        ? (data as { error: string }).error
+        : "입장 코드 발급에 실패했습니다.",
+    )
+  }
+  const body = data as ScheduleInviteCreated
+  if (!body.code) {
+    throw new Error("입장 코드 발급 응답이 올바르지 않습니다.")
+  }
+  return body
+}
+
+export async function redeemScheduleInviteCode(userId: string, code: string): Promise<void> {
+  const res = await fetch("/api/schedule/invites/redeem", {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ userId, code }),
+  })
+  const data: unknown = await res.json().catch(() => ({}))
+  if (!res.ok) {
+    throw new Error(
+      typeof data === "object" && data && "error" in data && typeof (data as { error: string }).error === "string"
+        ? (data as { error: string }).error
+        : "입장 코드가 올바르지 않습니다.",
+    )
+  }
+}
+
 export type ScheduleMember = {
   userId: string
   nickname: string
