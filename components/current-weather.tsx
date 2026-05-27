@@ -149,7 +149,7 @@ export function CurrentWeather({
     return (
       <section
         className={cn(
-          "flex h-9 min-w-0 flex-1 items-center gap-1.5 rounded-xl border border-border/50 bg-card/50 px-2 sm:h-10 sm:gap-2 sm:px-2.5 md:h-11",
+          "inline-flex h-9 w-fit max-w-[18rem] min-w-0 items-center gap-1.5 rounded-xl border border-border/50 bg-card/50 px-2 sm:h-10 sm:gap-2 sm:px-2.5 md:h-11",
           className,
         )}
         aria-label="현재 위치 날씨"

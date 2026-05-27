@@ -84,7 +84,7 @@ export function TitanicCsvUpload() {
   }
 
   return (
-    <div className="w-full max-w-xl space-y-4">
+    <div className="w-full space-y-4">
       <input
         ref={inputRef}
         type="file"
@@ -108,7 +108,7 @@ export function TitanicCsvUpload() {
         onDragLeave={onDragLeave}
         onDrop={onDrop}
         className={cn(
-          "rounded-xl border-2 border-dashed px-6 py-10 text-center transition-colors outline-none focus-visible:ring-[3px] focus-visible:ring-ring/50 focus-visible:border-ring",
+          "mx-auto max-w-2xl rounded-xl border-2 border-dashed px-5 py-8 text-center transition-colors outline-none focus-visible:ring-[3px] focus-visible:ring-ring/50 focus-visible:border-ring sm:px-6 sm:py-10",
           isDragging
             ? "border-primary bg-primary/10"
             : "border-border bg-card/40 hover:border-primary/50 hover:bg-card/60",

@@ -24,6 +24,8 @@ const navItems = [
   { href: "/titanic", label: "수업용" },
 ]
 
+const lessonItems = [{ href: "/titanic/data-collection", label: "데이터 수집" }] as const
+
 const mypageItems = [
   { href: "/mypage", label: "프로필", icon: UserRound },
   { href: "/mypage?tab=train", label: "훈련", icon: Zap },
@@ -90,6 +92,15 @@ export function Header() {
             MY
           </Link>
 
+          <Link
+            href="/login"
+            className="inline-flex h-9 items-center justify-center rounded-full border border-border/60 bg-secondary/40 px-3 text-sm font-semibold tracking-wide text-foreground transition-colors hover:bg-secondary/60 sm:h-10 sm:px-4"
+            aria-label="로그인"
+            title="로그인"
+          >
+            로그인
+          </Link>
+
           <button
             type="button"
             onClick={() => setMenuOpen(true)}
@@ -147,19 +158,44 @@ export function Header() {
             {navItems.map((item) => {
               const isActive = pathname === item.href
               return (
-                <SheetClose asChild key={item.href}>
-                  <Link
-                    href={item.href}
-                    className={[
-                      "block rounded-lg px-4 py-3 text-sm font-medium transition-colors",
-                      isActive
-                        ? "border border-border bg-secondary text-foreground"
-                        : "text-muted-foreground hover:bg-secondary/50 hover:text-foreground",
-                    ].join(" ")}
-                  >
-                    {item.label}
-                  </Link>
-                </SheetClose>
+                <div key={item.href} className="flex flex-col gap-1">
+                  <SheetClose asChild>
+                    <Link
+                      href={item.href}
+                      className={[
+                        "block rounded-lg px-4 py-3 text-sm font-medium transition-colors",
+                        isActive
+                          ? "border border-border bg-secondary text-foreground"
+                          : "text-muted-foreground hover:bg-secondary/50 hover:text-foreground",
+                      ].join(" ")}
+                    >
+                      {item.label}
+                    </Link>
+                  </SheetClose>
+
+                  {item.href === "/titanic" && pathname.startsWith("/titanic") ? (
+                    <div className="ml-4 border-l border-border/70 pl-2">
+                      {lessonItems.map((sub) => {
+                        const active = pathname === sub.href
+                        return (
+                          <SheetClose asChild key={sub.href}>
+                            <Link
+                              href={sub.href}
+                              className={[
+                                "block rounded-lg px-3 py-2 text-sm font-medium transition-colors",
+                                active
+                                  ? "border border-border bg-secondary text-foreground"
+                                  : "text-muted-foreground hover:bg-secondary/50 hover:text-foreground",
+                              ].join(" ")}
+                            >
+                              {sub.label}
+                            </Link>
+                          </SheetClose>
+                        )
+                      })}
+                    </div>
+                  ) : null}
+                </div>
               )
             })}
           </nav>
