@@ -30,9 +30,12 @@ export function TitanicCsvUpload() {
   const [file, setFile] = useState<File | null>(null)
   const [error, setError] = useState<string | null>(null)
   const [isDragging, setIsDragging] = useState(false)
+  const [uploading, setUploading] = useState(false)
+  const [uploadedCount, setUploadedCount] = useState<number | null>(null)
 
   const applyFile = useCallback((next: File | null) => {
     setError(null)
+    setUploadedCount(null)
     if (!next) {
       setFile(null)
       return
@@ -44,6 +47,37 @@ export function TitanicCsvUpload() {
     }
     setFile(next)
   }, [])
+
+  const uploadFile = async () => {
+    if (!file || uploading) return
+    setError(null)
+    setUploading(true)
+    setUploadedCount(null)
+    try {
+      const form = new FormData()
+      form.append("file", file, file.name)
+      // Use same-origin proxy to avoid CORS/network issues in the browser.
+      const res = await fetch("/api/titanic/james/upload", { method: "POST", body: form })
+
+      const raw = await res.text()
+      const json = ((): { rows?: unknown[]; error?: string; detail?: string } => {
+        try {
+          return raw ? (JSON.parse(raw) as any) : {}
+        } catch {
+          return { detail: raw || undefined }
+        }
+      })()
+      if (!res.ok) {
+        setError(json.error ?? json.detail ?? "업로드에 실패했습니다.")
+        return
+      }
+      setUploadedCount(Array.isArray(json.rows) ? json.rows.length : null)
+    } catch {
+      setError("업로드 중 오류가 발생했습니다.")
+    } finally {
+      setUploading(false)
+    }
+  }
 
   const openPicker = () => {
     inputRef.current?.click()
@@ -137,6 +171,14 @@ export function TitanicCsvUpload() {
             {file.name}
           </p>
           <p className="text-muted-foreground text-xs mt-1">{formatBytes(file.size)}</p>
+          <div className="mt-3 flex flex-wrap items-center justify-between gap-2">
+            <Button type="button" size="sm" onClick={uploadFile} disabled={uploading}>
+              {uploading ? "업로드 중…" : "업로드"}
+            </Button>
+            {uploadedCount != null ? (
+              <p className="text-xs text-muted-foreground">총 {uploadedCount.toLocaleString()}건 업로드됨</p>
+            ) : null}
+          </div>
           <Button
             type="button"
             variant="ghost"

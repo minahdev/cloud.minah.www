@@ -24,7 +24,10 @@ const navItems = [
   { href: "/titanic", label: "수업용" },
 ]
 
-const lessonItems = [{ href: "/titanic/data-collection", label: "데이터 수집" }] as const
+const lessonItems = [
+  { href: "/titanic/data-collection", label: "데이터 수집" },
+  { href: "/titanic/passengers", label: "승객 목록" },
+] as const
 
 const mypageItems = [
   { href: "/mypage", label: "프로필", icon: UserRound },
