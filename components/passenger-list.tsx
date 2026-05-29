@@ -1,11 +1,11 @@
 "use client"
 
 import Link from "next/link"
-import { useEffect, useMemo, useState } from "react"
+import { useMemo } from "react"
 
 import { Button } from "@/components/ui/button"
 
-type PassengerRow = {
+export type PassengerRow = {
   id: number
   passengerId: string
   survived: string
@@ -21,28 +21,20 @@ type PassengerRow = {
   embarked: string
 }
 
-type PassengerPageResponse = {
+export type PassengerPageResponse = {
   rows: PassengerRow[]
   total: number
   page: number
   pageSize: number
 }
 
-export function PassengerList({ page }: { page: number }) {
-  const pageSize = 50
-  const [data, setData] = useState<PassengerPageResponse | null>(null)
-  const [error, setError] = useState<string | null>(null)
-  const [loading, setLoading] = useState(false)
-
-  const offset = useMemo(() => (page - 1) * pageSize, [page])
-  const totalPages = useMemo(() => {
-    if (!data) return null
-    return Math.max(1, Math.ceil(data.total / data.pageSize))
-  }, [data])
+export function PassengerList({ page, data }: { page: number; data: PassengerPageResponse }) {
+  const pageSize = data.pageSize
+  const totalPages = useMemo(
+    () => Math.max(1, Math.ceil(data.total / pageSize)),
+    [data.total, pageSize]
+  )
   const pageGroup = useMemo(() => {
-    if (!totalPages) return null
-    // No-scroll pagination that always fits on mobile.
-    // Example: 1 2 3 4 5 · · · 18 (and keep current page visible)
     const range = (a: number, b: number) => Array.from({ length: b - a + 1 }, (_, i) => a + i)
 
     const items: Array<number | "ellipsis"> = []
@@ -66,52 +58,15 @@ export function PassengerList({ page }: { page: number }) {
     return { items, totalPages }
   }, [page, totalPages])
 
-  useEffect(() => {
-    let cancelled = false
-    setLoading(true)
-    setError(null)
-    setData(null)
-    fetch(`/api/titanic/walter/passengers?offset=${offset}&limit=${pageSize}`, { method: "GET" })
-      .then(async (res) => {
-        const text = await res.text()
-        let json: any = null
-        try {
-          json = text ? JSON.parse(text) : {}
-        } catch {
-          json = { detail: text }
-        }
-        if (!res.ok) {
-          throw new Error(json?.error ?? json?.detail ?? "목록을 불러오지 못했습니다.")
-        }
-        return json as PassengerPageResponse
-      })
-      .then((json) => {
-        if (cancelled) return
-        setData(json)
-      })
-      .catch((e: unknown) => {
-        if (cancelled) return
-        setError(e instanceof Error ? e.message : "목록을 불러오지 못했습니다.")
-      })
-      .finally(() => {
-        if (cancelled) return
-        setLoading(false)
-      })
-    return () => {
-      cancelled = true
-    }
-  }, [offset])
-
-  if (loading) return <p className="text-sm text-muted-foreground">불러오는 중…</p>
-  if (error) return <p className="text-sm text-destructive">{error}</p>
-  if (!data) return null
+  if (data.total === 0) {
+    return <p className="text-sm text-muted-foreground">현재 등록된 승객 목록이 없습니다.</p>
+  }
 
   const canPrev = page > 1
-  const canNext = totalPages != null ? page < totalPages : true
+  const canNext = page < totalPages
 
   return (
     <div className="space-y-4">
-      {/* Table (mobile included) */}
       <div className="overflow-x-auto rounded-xl border border-border">
         <table className="w-full min-w-[1100px] text-sm">
           <thead className="bg-secondary/50 text-muted-foreground">
@@ -153,59 +108,46 @@ export function PassengerList({ page }: { page: number }) {
 
       <div className="flex flex-wrap items-center justify-between gap-3">
         <p className="text-xs text-muted-foreground">
-          총 {data.total.toLocaleString()}명 · 페이지 {data.page.toLocaleString()}
-          {totalPages ? ` / ${totalPages.toLocaleString()}` : ""}
+          총 {data.total.toLocaleString()}명 · 페이지 {data.page.toLocaleString()} / {totalPages.toLocaleString()}
         </p>
 
-        {pageGroup ? (
-          <nav className="flex w-full flex-wrap items-center justify-between gap-2" aria-label="승객 목록 페이지네이션">
-            <Button asChild size="sm" variant="secondary" disabled={!canPrev}>
-              <Link href={`/titanic/passengers?page=${page - 1}`}>이전</Link>
-            </Button>
+        <nav className="flex w-full flex-wrap items-center justify-between gap-2" aria-label="승객 목록 페이지네이션">
+          <Button asChild size="sm" variant="secondary" disabled={!canPrev}>
+            <Link href={`/titanic/passengers?page=${page - 1}`}>이전</Link>
+          </Button>
 
-            <div className="flex min-w-0 flex-1 items-center justify-center gap-1 whitespace-nowrap">
-              {pageGroup.items.map((it, idx) => {
-                if (it === "ellipsis") {
-                  return (
-                    <span key={`e-${idx}`} className="px-1.5 py-1 text-sm font-semibold text-muted-foreground">
-                      · · ·
-                    </span>
-                  )
-                }
-                const p = it
-                const active = p === page
+          <div className="flex min-w-0 flex-1 items-center justify-center gap-1 whitespace-nowrap">
+            {pageGroup.items.map((it, idx) => {
+              if (it === "ellipsis") {
                 return (
-                  <Link
-                    key={p}
-                    href={`/titanic/passengers?page=${p}`}
-                    aria-current={active ? "page" : undefined}
-                    className={[
-                      "min-w-6 px-1.5 py-1 text-sm font-semibold transition-colors",
-                      active ? "text-primary" : "text-muted-foreground hover:text-foreground",
-                    ].join(" ")}
-                  >
-                    {p}
-                  </Link>
+                  <span key={`e-${idx}`} className="px-1.5 py-1 text-sm font-semibold text-muted-foreground">
+                    · · ·
+                  </span>
                 )
-              })}
-            </div>
-
-            <Button asChild size="sm" variant="secondary" disabled={!canNext}>
-              <Link href={`/titanic/passengers?page=${page + 1}`}>다음</Link>
-            </Button>
-          </nav>
-        ) : (
-          <div className="flex items-center gap-2">
-            <Button asChild size="sm" variant="secondary" disabled={!canPrev}>
-              <Link href={`/titanic/passengers?page=${page - 1}`}>이전</Link>
-            </Button>
-            <Button asChild size="sm" variant="secondary" disabled={!canNext}>
-              <Link href={`/titanic/passengers?page=${page + 1}`}>다음</Link>
-            </Button>
+              }
+              const p = it
+              const active = p === page
+              return (
+                <Link
+                  key={p}
+                  href={`/titanic/passengers?page=${p}`}
+                  aria-current={active ? "page" : undefined}
+                  className={[
+                    "min-w-6 px-1.5 py-1 text-sm font-semibold transition-colors",
+                    active ? "text-primary" : "text-muted-foreground hover:text-foreground",
+                  ].join(" ")}
+                >
+                  {p}
+                </Link>
+              )
+            })}
           </div>
-        )}
+
+          <Button asChild size="sm" variant="secondary" disabled={!canNext}>
+            <Link href={`/titanic/passengers?page=${page + 1}`}>다음</Link>
+          </Button>
+        </nav>
       </div>
     </div>
   )
 }
-
