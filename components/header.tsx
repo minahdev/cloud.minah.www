@@ -1,9 +1,11 @@
 "use client"
 
-import { useState } from "react"
+import { useEffect, useRef, useState } from "react"
 import Link from "next/link"
 import { usePathname, useSearchParams } from "next/navigation"
-import { Activity, BarChart3, Menu, UserRound, Zap } from "lucide-react"
+import { Activity, BarChart3, ChevronDown, Menu, UserRound, Zap } from "lucide-react"
+
+import { cn } from "@/lib/utils"
 
 import { CurrentWeather } from "@/components/current-weather"
 import {
@@ -47,6 +49,115 @@ function isMypageItemActive(pathname: string, tab: string | null, href: string) 
   if (href.includes("tab=train")) return tab === "train"
   if (href.includes("tab=analytics")) return tab === "analytics"
   return false
+}
+
+const LESSON_DRAG_THRESHOLD_PX = 28
+
+type LessonDragState = {
+  active: boolean
+  startY: number
+  dragged: boolean
+}
+
+function LessonMenuSection({
+  pathname,
+  isTitanicActive,
+}: {
+  pathname: string
+  isTitanicActive: boolean
+}) {
+  const [expanded, setExpanded] = useState(isTitanicActive)
+  const dragRef = useRef<LessonDragState>({ active: false, startY: 0, dragged: false })
+
+  useEffect(() => {
+    if (isTitanicActive) setExpanded(true)
+  }, [isTitanicActive])
+
+  const showSubs = expanded || isTitanicActive
+
+  const endDrag = (target: HTMLElement, pointerId: number) => {
+    dragRef.current.active = false
+    try {
+      target.releasePointerCapture(pointerId)
+    } catch {
+      /* ignore */
+    }
+  }
+
+  return (
+    <div className="flex flex-col gap-1">
+      <div
+        role="button"
+        tabIndex={0}
+        aria-expanded={showSubs}
+        aria-label="수업용 메뉴, 아래로 드래그하면 하위 메뉴가 열립니다"
+        className={cn(
+          "flex touch-none select-none items-center justify-between rounded-lg px-4 py-3 text-sm font-medium transition-colors",
+          "cursor-grab active:cursor-grabbing",
+          isTitanicActive
+            ? "border border-border bg-secondary text-foreground"
+            : "text-muted-foreground hover:bg-secondary/50 hover:text-foreground",
+        )}
+        onPointerDown={(e) => {
+          dragRef.current = { active: true, startY: e.clientY, dragged: false }
+          e.currentTarget.setPointerCapture(e.pointerId)
+        }}
+        onPointerMove={(e) => {
+          if (!dragRef.current.active) return
+          const dy = e.clientY - dragRef.current.startY
+          if (dy >= LESSON_DRAG_THRESHOLD_PX && !dragRef.current.dragged) {
+            dragRef.current.dragged = true
+            setExpanded(true)
+          }
+        }}
+        onPointerUp={(e) => {
+          const dy = e.clientY - dragRef.current.startY
+          endDrag(e.currentTarget, e.pointerId)
+          if (!dragRef.current.dragged && Math.abs(dy) < 8) {
+            setExpanded((open) => !open)
+          }
+        }}
+        onPointerCancel={(e) => {
+          endDrag(e.currentTarget, e.pointerId)
+        }}
+        onKeyDown={(e) => {
+          if (e.key === "Enter" || e.key === " ") {
+            e.preventDefault()
+            setExpanded((open) => !open)
+          }
+        }}
+      >
+        <span>수업용</span>
+        <ChevronDown
+          className={cn("h-4 w-4 shrink-0 transition-transform", showSubs && "rotate-180")}
+          aria-hidden
+        />
+      </div>
+
+      {showSubs ? (
+        <div className="ml-4 border-l border-border/70 pl-2">
+          {lessonItems.map((sub) => {
+            const active = pathname === sub.href
+            return (
+              <SheetClose asChild key={sub.href}>
+                <Link
+                  href={sub.href}
+                  className={cn(
+                    "block rounded-lg px-3 py-2 text-sm font-medium transition-colors",
+                    active
+                      ? "border border-border bg-secondary text-foreground"
+                      : "text-muted-foreground hover:bg-secondary/50 hover:text-foreground",
+                  )}
+                >
+                  {sub.label}
+                </Link>
+              </SheetClose>
+            )
+          })}
+        </div>
+      ) : null}
+    </div>
+  )
 }
 
 export function Header() {
@@ -160,45 +271,29 @@ export function Header() {
             </p>
             {navItems.map((item) => {
               const isActive = pathname === item.href
+              if (item.href === "/titanic") {
+                return (
+                  <LessonMenuSection
+                    key={item.href}
+                    pathname={pathname}
+                    isTitanicActive={isActive || pathname.startsWith("/titanic")}
+                  />
+                )
+              }
               return (
-                <div key={item.href} className="flex flex-col gap-1">
-                  <SheetClose asChild>
-                    <Link
-                      href={item.href}
-                      className={[
-                        "block rounded-lg px-4 py-3 text-sm font-medium transition-colors",
-                        isActive
-                          ? "border border-border bg-secondary text-foreground"
-                          : "text-muted-foreground hover:bg-secondary/50 hover:text-foreground",
-                      ].join(" ")}
-                    >
-                      {item.label}
-                    </Link>
-                  </SheetClose>
-
-                  {item.href === "/titanic" && pathname.startsWith("/titanic") ? (
-                    <div className="ml-4 border-l border-border/70 pl-2">
-                      {lessonItems.map((sub) => {
-                        const active = pathname === sub.href
-                        return (
-                          <SheetClose asChild key={sub.href}>
-                            <Link
-                              href={sub.href}
-                              className={[
-                                "block rounded-lg px-3 py-2 text-sm font-medium transition-colors",
-                                active
-                                  ? "border border-border bg-secondary text-foreground"
-                                  : "text-muted-foreground hover:bg-secondary/50 hover:text-foreground",
-                              ].join(" ")}
-                            >
-                              {sub.label}
-                            </Link>
-                          </SheetClose>
-                        )
-                      })}
-                    </div>
-                  ) : null}
-                </div>
+                <SheetClose asChild key={item.href}>
+                  <Link
+                    href={item.href}
+                    className={[
+                      "block rounded-lg px-4 py-3 text-sm font-medium transition-colors",
+                      isActive
+                        ? "border border-border bg-secondary text-foreground"
+                        : "text-muted-foreground hover:bg-secondary/50 hover:text-foreground",
+                    ].join(" ")}
+                  >
+                    {item.label}
+                  </Link>
+                </SheetClose>
               )
             })}
           </nav>

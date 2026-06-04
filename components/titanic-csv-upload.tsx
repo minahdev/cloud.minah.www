@@ -60,7 +60,12 @@ export function TitanicCsvUpload() {
       const res = await fetch("/api/titanic/james/upload", { method: "POST", body: form })
 
       const raw = await res.text()
-      const json = ((): { rows?: unknown[]; error?: string; detail?: string } => {
+      const json = ((): {
+        saved?: number
+        received?: number
+        error?: string
+        detail?: string
+      } => {
         try {
           return raw ? (JSON.parse(raw) as any) : {}
         } catch {
@@ -71,7 +76,13 @@ export function TitanicCsvUpload() {
         setError(json.error ?? json.detail ?? "업로드에 실패했습니다.")
         return
       }
-      setUploadedCount(Array.isArray(json.rows) ? json.rows.length : null)
+      const count =
+        typeof json.saved === "number"
+          ? json.saved
+          : typeof json.received === "number"
+            ? json.received
+            : null
+      setUploadedCount(count)
     } catch {
       setError("업로드 중 오류가 발생했습니다.")
     } finally {

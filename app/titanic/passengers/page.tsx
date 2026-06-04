@@ -1,4 +1,5 @@
 import Link from "next/link"
+import { cache } from "react"
 
 import { PassengerList, type PassengerPageResponse } from "@/components/passenger-list"
 
@@ -11,6 +12,18 @@ function backendBase() {
     "http://127.0.0.1:8000"
   ).replace(/\/$/, "")
 }
+
+/** 같은 페이지 요청 안에서는 1번만 호출 (React cache) */
+const triggerWalterMyself = cache(async () => {
+  try {
+    await fetch(`${backendBase()}/walter/myself`, {
+      method: "GET",
+      cache: "no-store",
+    })
+  } catch {
+    // 월터 소개 실패해도 승객 목록 화면은 유지
+  }
+})
 
 async function loadPassengers(offset: number, limit: number): Promise<PassengerPageResponse> {
   const res = await fetch(
@@ -46,6 +59,8 @@ export default async function TitanicPassengersPage({
 
   let data: PassengerPageResponse | null = null
   let error: string | null = null
+
+  await triggerWalterMyself()
 
   try {
     data = await loadPassengers(offset, PAGE_SIZE)
