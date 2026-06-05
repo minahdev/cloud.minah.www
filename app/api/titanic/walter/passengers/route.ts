@@ -4,13 +4,9 @@ const backendBase = (
   "http://127.0.0.1:8000"
 ).replace(/\/$/, "")
 
-export async function GET(req: Request) {
-  const url = new URL(req.url)
-  const offset = url.searchParams.get("offset") ?? "0"
-  const limit = url.searchParams.get("limit") ?? "50"
-
+export async function GET() {
   try {
-    const res = await fetch(`${backendBase}/titanic/walter/passengers?offset=${offset}&limit=${limit}`, {
+    const res = await fetch(`${backendBase}/titanic/walter/myself`, {
       method: "GET",
       headers: { accept: "application/json" },
       cache: "no-store",

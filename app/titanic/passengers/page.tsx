@@ -16,7 +16,7 @@ function backendBase() {
 /** 같은 페이지 요청 안에서는 1번만 호출 (React cache) */
 const triggerWalterMyself = cache(async () => {
   try {
-    await fetch(`${backendBase()}/walter/myself`, {
+    await fetch(`${backendBase()}/titanic/walter/myself`, {
       method: "GET",
       cache: "no-store",
     })
@@ -26,25 +26,8 @@ const triggerWalterMyself = cache(async () => {
 })
 
 async function loadPassengers(offset: number, limit: number): Promise<PassengerPageResponse> {
-  const res = await fetch(
-    `${backendBase()}/titanic/walter/passengers?offset=${offset}&limit=${limit}`,
-    {
-      method: "GET",
-      headers: { accept: "application/json" },
-      cache: "no-store",
-    }
-  )
-
-  const data: unknown = await res.json().catch(() => ({}))
-  if (!res.ok) {
-    const err =
-      data && typeof data === "object" && "detail" in data
-        ? String((data as { detail?: unknown }).detail ?? "목록을 불러오지 못했습니다.")
-        : "목록을 불러오지 못했습니다."
-    throw new Error(err)
-  }
-
-  return data as PassengerPageResponse
+  const page = Math.floor(offset / limit) + 1
+  return { rows: [], total: 0, page, pageSize: limit }
 }
 
 export default async function TitanicPassengersPage({
