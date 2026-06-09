@@ -35,6 +35,8 @@ export function CurrentWeather({
   const [error, setError] = useState<string | null>(null)
   const [usingFallback, setUsingFallback] = useState(false)
   const fetchPriorityRef = useRef(0)
+  // cleanup: useEffect가 재실행될 때(StrictMode 포함) 인-플라이트 fetch를 중단한다
+  const abortFnsRef = useRef<Array<() => void>>([])
 
   const compact = variant === "compact"
   const header = variant === "header"
@@ -48,6 +50,10 @@ export function CurrentWeather({
       setError(null)
 
       const controller = new AbortController()
+      let isCleanupAbort = false
+      const abort = () => { isCleanupAbort = true; controller.abort() }
+      abortFnsRef.current.push(abort)
+
       const timer = window.setTimeout(() => controller.abort(), 12_000)
 
       return fetch(url, { signal: controller.signal })
@@ -63,6 +69,7 @@ export function CurrentWeather({
           }
         })
         .catch((e: unknown) => {
+          if (isCleanupAbort) return
           if (priority < fetchPriorityRef.current) return
           if (!opts?.keepPrevious) {
             setWeather(null)
@@ -75,6 +82,7 @@ export function CurrentWeather({
         })
         .finally(() => {
           window.clearTimeout(timer)
+          abortFnsRef.current = abortFnsRef.current.filter((fn) => fn !== abort)
           setLoading(false)
         })
     },
@@ -136,6 +144,10 @@ export function CurrentWeather({
 
   useEffect(() => {
     requestLocation()
+    return () => {
+      abortFnsRef.current.forEach((fn) => fn())
+      abortFnsRef.current = []
+    }
   }, [requestLocation])
 
   const temp =
