@@ -29,6 +29,7 @@ const navItems = [
 const lessonItems = [
   { href: "/titanic/data-collection", label: "데이터 수집" },
   { href: "/titanic/passengers", label: "승객 목록" },
+  { href: "/titanic/conversations", label: "스미스 선장과의 대화" },
 ] as const
 
 const mypageItems = [

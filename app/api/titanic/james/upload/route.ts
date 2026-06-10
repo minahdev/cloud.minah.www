@@ -21,7 +21,7 @@ export async function POST(req: Request) {
   upstream.append("file", file, file.name)
 
   try {
-    const res = await fetch(`${backendBase}/titanic/james/upload`, {
+    const res = await fetch(`${backendBase}/api/titanic/james/upload`, {
       method: "POST",
       body: upstream,
     })

@@ -6,7 +6,7 @@ const backendBase = (
 
 export async function GET() {
   try {
-    const res = await fetch(`${backendBase}/titanic/walter/myself`, {
+    const res = await fetch(`${backendBase}/api/titanic/walter/myself`, {
       method: "GET",
       headers: { accept: "application/json" },
       cache: "no-store",
