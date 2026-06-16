@@ -23,8 +23,8 @@ export async function POST(req: Request) {
     if (!res.ok) {
       return Response.json({ error: "백엔드 오류" }, { status: res.status })
     }
-    const d = data as { reply?: string }
-    return Response.json({ reply: d.reply ?? "응답을 받지 못했습니다." })
+    const d = data as { text?: string }
+    return Response.json({ reply: d.text ?? "응답을 받지 못했습니다." })
   } catch (e) {
     console.error("[smith/chat]", e)
     return Response.json({ error: "백엔드에 연결할 수 없습니다." }, { status: 503 })
