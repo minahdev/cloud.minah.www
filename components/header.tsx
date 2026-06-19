@@ -3,7 +3,7 @@
 import { useEffect, useRef, useState } from "react"
 import Link from "next/link"
 import { usePathname, useSearchParams } from "next/navigation"
-import { Activity, BarChart3, ChevronDown, Menu, UserRound, Zap } from "lucide-react"
+import { Activity, BarChart3, ChevronDown, Menu, Shield, UserRound, Zap } from "lucide-react"
 
 import { cn } from "@/lib/utils"
 
@@ -36,6 +36,7 @@ const mypageItems = [
   { href: "/mypage", label: "프로필", icon: UserRound },
   { href: "/mypage?tab=train", label: "훈련", icon: Zap },
   { href: "/mypage?tab=analytics", label: "분석", icon: BarChart3 },
+  { href: "/admin", label: "관리자", icon: Shield },
 ] as const
 
 function navPillClass(active: boolean) {
@@ -45,6 +46,7 @@ function navPillClass(active: boolean) {
 }
 
 function isMypageItemActive(pathname: string, tab: string | null, href: string) {
+  if (href === "/admin") return pathname === "/admin"
   if (pathname !== "/mypage") return false
   if (href === "/mypage") return !tab || tab === "profile"
   if (href.includes("tab=train")) return tab === "train"
