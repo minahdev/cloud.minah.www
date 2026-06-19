@@ -566,9 +566,5 @@ function BodySelector({
 }
 
 export default function TrainPage() {
-  const router = useRouter()
-  useEffect(() => {
-    router.replace("/mypage?tab=train")
-  }, [router])
-  return null
+  return <TrainPanel />
 }

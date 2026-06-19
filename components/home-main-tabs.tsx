@@ -16,7 +16,7 @@ const INTRO_LINES = [
 
 export function HomeMainTabs() {
   return (
-    <div className="flex min-h-0 flex-1 flex-col items-center text-center">
+    <div className="flex flex-col items-center text-center">
       <div className={`${contentWidth} mb-5 flex flex-col items-center md:mb-7`}>
         <div className="inline-flex items-center gap-2 rounded-full border border-primary/25 bg-secondary/80 px-3 py-1.5 text-xs shadow-sm shadow-primary/5 backdrop-blur-sm sm:px-3.5 sm:py-2 sm:text-sm">
           <Sparkles className="size-3.5 shrink-0 text-primary sm:size-4" aria-hidden />
@@ -43,9 +43,9 @@ export function HomeMainTabs() {
         ]}
       />
 
-      <div className={`${contentWidth} mt-6 flex min-h-0 flex-1 flex-col gap-4`}>
+      <div className={`${contentWidth} mt-6 flex flex-col gap-4`}>
         <TodayStoryPanel />
-        <GeminiChat className="min-h-[14rem] flex-1 text-left" />
+        <GeminiChat className="min-h-[14rem] text-left" />
       </div>
     </div>
   )

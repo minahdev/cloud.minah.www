@@ -716,17 +716,6 @@ export function MyPageForm({ embedded = false }: { embedded?: boolean }) {
         </div>
       ) : null}
 
-      <div className="mt-8 border-t border-border/60 pt-6">
-        <button
-          type="button"
-          onClick={handleLogout}
-          disabled={submitting}
-          className="inline-flex w-full items-center justify-center gap-2 rounded-xl border border-border bg-secondary/50 py-3 text-sm font-medium text-muted-foreground transition-colors hover:border-destructive/40 hover:bg-destructive/10 hover:text-destructive disabled:opacity-60"
-        >
-          <LogOut className="size-4" aria-hidden />
-          로그아웃
-        </button>
-      </div>
     </div>
   )
 }

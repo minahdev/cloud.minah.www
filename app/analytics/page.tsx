@@ -464,9 +464,5 @@ export function AnalyticsPanel({ embedded = false }: { embedded?: boolean }) {
 }
 
 export default function AnalyticsPage() {
-  const router = useRouter()
-  useEffect(() => {
-    router.replace("/mypage?tab=analytics")
-  }, [router])
-  return null
+  return <AnalyticsPanel />
 }

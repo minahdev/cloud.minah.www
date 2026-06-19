@@ -4,13 +4,14 @@ import { FormEvent, useEffect, useState } from "react"
 import Link from "next/link"
 import { format, parseISO } from "date-fns"
 import { ko } from "date-fns/locale"
-import { Megaphone, Trash2 } from "lucide-react"
+import { ChevronDown, Megaphone, Trash2 } from "lucide-react"
 
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { Textarea } from "@/components/ui/textarea"
+import { cn } from "@/lib/utils"
 import { getLoggedInUserId } from "@/lib/auth-session"
 import { canManageNotices } from "@/lib/pace-admin"
 import { addNotice, deleteNotice, loadNotices, type Notice } from "@/lib/pace-notices-storage"
@@ -23,7 +24,7 @@ type NoticeUi = {
 
 function formatNoticeDate(iso: string) {
   try {
-    return format(parseISO(iso), "yyyy.MM.dd HH:mm", { locale: ko })
+    return format(parseISO(iso), "yyyy.MM.dd.", { locale: ko })
   } catch {
     return iso
   }
@@ -37,6 +38,7 @@ export default function NoticesPage() {
   })
   const [formKey, setFormKey] = useState(0)
   const [isAdmin, setIsAdmin] = useState(false)
+  const [expandedId, setExpandedId] = useState<string | null>(null)
 
   const refresh = () => {
     loadNotices()
@@ -182,52 +184,64 @@ export default function NoticesPage() {
         <h2 className="mb-4 text-lg font-semibold text-foreground">전체 공지</h2>
 
         {ui.notices === null ? (
-          <div className="space-y-3">
-            {[1, 2].map((i) => (
-              <div
-                key={i}
-                className="h-28 animate-pulse rounded-xl border border-border/60 bg-secondary/40"
-                aria-hidden
-              />
+          <div className="divide-y divide-border/60">
+            {[1, 2, 3].map((i) => (
+              <div key={i} className="py-5">
+                <div className="mb-2 h-4 w-3/4 animate-pulse rounded bg-secondary/60" aria-hidden />
+                <div className="h-3 w-20 animate-pulse rounded bg-secondary/40" aria-hidden />
+              </div>
             ))}
           </div>
         ) : ui.notices.length === 0 ? (
-          <p className="rounded-xl border border-dashed border-border py-12 text-center text-sm text-muted-foreground">
+          <p className="py-16 text-center text-sm text-muted-foreground">
             등록된 공지가 없습니다.
           </p>
         ) : (
-          <ul className="flex flex-col gap-4">
-            {ui.notices.map((notice) => (
-              <li key={notice.id}>
-                <Card className="border-border/80 shadow-sm">
-                  <CardHeader className="pb-2">
+          <ul className="divide-y divide-border/60">
+            {ui.notices.map((notice) => {
+              const expanded = expandedId === notice.id
+              return (
+                <li key={notice.id}>
+                  <button
+                    type="button"
+                    className="w-full py-5 text-left"
+                    onClick={() => setExpandedId(expanded ? null : notice.id)}
+                  >
                     <div className="flex items-start justify-between gap-3">
-                      <CardTitle className="text-base leading-snug">{notice.title}</CardTitle>
-                      {isAdmin ? (
-                        <Button
-                          type="button"
-                          variant="ghost"
-                          size="icon"
-                          className="shrink-0 text-muted-foreground hover:text-destructive"
-                          aria-label="공지 삭제"
-                          onClick={() => handleDelete(notice.id)}
-                        >
-                          <Trash2 className="h-4 w-4" />
-                        </Button>
-                      ) : null}
+                      <span className="text-base font-semibold leading-snug text-foreground">
+                        {notice.title}
+                      </span>
+                      <div className="flex shrink-0 items-center gap-1">
+                        {isAdmin ? (
+                          <span
+                            role="button"
+                            tabIndex={0}
+                            aria-label="공지 삭제"
+                            className="rounded p-1 text-muted-foreground hover:text-destructive"
+                            onClick={(e) => { e.stopPropagation(); handleDelete(notice.id) }}
+                            onKeyDown={(e) => { if (e.key === "Enter") { e.stopPropagation(); handleDelete(notice.id) } }}
+                          >
+                            <Trash2 className="h-4 w-4" />
+                          </span>
+                        ) : null}
+                        <ChevronDown
+                          className={cn("h-4 w-4 text-muted-foreground/60 transition-transform", expanded && "rotate-180")}
+                          aria-hidden
+                        />
+                      </div>
                     </div>
-                    <CardDescription>
-                      {formatNoticeDate(notice.createdAt)} · {notice.authorId}
-                    </CardDescription>
-                  </CardHeader>
-                  <CardContent className="pt-0">
-                    <p className="whitespace-pre-wrap text-sm leading-relaxed text-foreground">
-                      {notice.body}
-                    </p>
-                  </CardContent>
-                </Card>
-              </li>
-            ))}
+                    <p className="mt-1 text-sm text-primary/80">{formatNoticeDate(notice.createdAt)}</p>
+                  </button>
+                  {expanded && (
+                    <div className="pb-5">
+                      <p className="whitespace-pre-wrap text-sm leading-relaxed text-muted-foreground">
+                        {notice.body}
+                      </p>
+                    </div>
+                  )}
+                </li>
+              )
+            })}
           </ul>
         )}
       </div>

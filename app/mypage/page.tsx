@@ -2,10 +2,10 @@
 
 import { Suspense } from "react"
 
-import { MyPageTabs } from "@/components/mypage-tabs"
+import { MyPageForm } from "@/components/mypage-form"
 import { RequireAuth } from "@/components/require-auth"
 
-function MyPageFallback() {
+function Fallback() {
   return (
     <div className="pt-28 md:pt-32 pb-16">
       <div className="container mx-auto px-6">
@@ -20,8 +20,8 @@ export default function MyPagePage() {
     <RequireAuth loginRedirect="/mypage">
       <div className="pt-28 md:pt-32 pb-16">
         <div className="container mx-auto px-6">
-          <Suspense fallback={<MyPageFallback />}>
-            <MyPageTabs />
+          <Suspense fallback={<Fallback />}>
+            <MyPageForm />
           </Suspense>
         </div>
       </div>
