@@ -6,6 +6,9 @@ const nextConfig = {
   images: {
     unoptimized: true,
   },
+  outputFileTracingExcludes: {
+    "*": ["./CLAUDE.md"],
+  },
 }
 
 export default nextConfig
