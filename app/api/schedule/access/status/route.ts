@@ -1,8 +1,8 @@
-const backendBase = (process.env.BACKEND_URL ?? "http://127.0.0.1:8000").replace(/\/$/, "")
+import { backendBase, backendFetch } from "@/lib/backend"
 
 export async function GET() {
   try {
-    const res = await fetch(`${backendBase}/schedule/access/status`, { cache: "no-store" })
+    const res = await backendFetch(`${backendBase}/schedule/access/status`, { cache: "no-store" })
     const data: unknown = await res.json().catch(() => ({}))
     if (!res.ok) {
       const err =

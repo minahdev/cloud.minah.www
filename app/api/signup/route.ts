@@ -1,4 +1,4 @@
-const backendBase = (process.env.BACKEND_URL ?? "http://127.0.0.1:8000").replace(/\/$/, "")
+import { backendBase, backendFetch } from "@/lib/backend"
 
 type SignupBody = {
   userId?: string
@@ -37,7 +37,7 @@ export async function POST(req: Request) {
   }
 
   try {
-    const res = await fetch(`${backendBase}/signup`, {
+    const res = await backendFetch(`${backendBase}/signup`, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({

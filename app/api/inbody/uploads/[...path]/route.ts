@@ -1,11 +1,11 @@
-const backendBase = (process.env.BACKEND_URL ?? "http://127.0.0.1:8000").replace(/\/$/, "")
+import { backendBase, backendFetch } from "@/lib/backend"
 
 type RouteCtx = { params: Promise<{ path: string[] }> }
 
 export async function GET(_req: Request, ctx: RouteCtx) {
   const { path } = await ctx.params
   const joined = path.map((p) => encodeURIComponent(p)).join("/")
-  const res = await fetch(`${backendBase}/uploads/${joined}`, { cache: "no-store" })
+  const res = await backendFetch(`${backendBase}/uploads/${joined}`, { cache: "no-store" })
   if (!res.ok) {
     return new Response("Not found", { status: res.status })
   }

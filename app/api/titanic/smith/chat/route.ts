@@ -1,4 +1,4 @@
-const backendBase = (process.env.BACKEND_URL ?? "http://127.0.0.1:8000").replace(/\/$/, "")
+import { backendBase, backendFetch } from "@/lib/backend"
 
 export async function POST(req: Request) {
   let body: { messages?: { role: string; content: string }[] }
@@ -14,7 +14,7 @@ export async function POST(req: Request) {
   }
 
   try {
-    const res = await fetch(`${backendBase}/api/titanic/smith/chat`, {
+    const res = await backendFetch(`${backendBase}/api/titanic/smith/chat`, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ messages }),

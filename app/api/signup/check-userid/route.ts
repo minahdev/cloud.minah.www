@@ -1,4 +1,4 @@
-const backendBase = (process.env.BACKEND_URL ?? "http://127.0.0.1:8000").replace(/\/$/, "")
+import { backendBase, backendFetch } from "@/lib/backend"
 
 function errorFromFastAPI(body: unknown, fallback: string): string {
   if (!body || typeof body !== "object") return fallback
@@ -15,7 +15,7 @@ export async function GET(req: Request) {
   }
 
   try {
-    const res = await fetch(
+    const res = await backendFetch(
       `${backendBase}/signup/check-userid?userId=${encodeURIComponent(userId)}`,
       { cache: "no-store" },
     )

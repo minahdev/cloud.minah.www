@@ -1,4 +1,4 @@
-const backendBase = (process.env.BACKEND_URL ?? "http://127.0.0.1:8000").replace(/\/$/, "")
+import { backendBase, backendFetch } from "@/lib/backend"
 
 function errorFromFastAPI(body: unknown, fallback: string): string {
   if (!body || typeof body !== "object") return fallback
@@ -29,7 +29,7 @@ export async function POST(req: Request) {
   }
 
   try {
-    const res = await fetch(`${backendBase}/schedule/access/verify`, {
+    const res = await backendFetch(`${backendBase}/schedule/access/verify`, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ userId, password }),

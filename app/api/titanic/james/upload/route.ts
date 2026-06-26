@@ -1,8 +1,4 @@
-const backendBase = (
-  process.env.BACKEND_URL ??
-  process.env.NEXT_PUBLIC_BACKEND_URL ??
-  "http://127.0.0.1:8000"
-).replace(/\/$/, "")
+import { backendBase, backendFetch } from "@/lib/backend"
 
 export async function POST(req: Request) {
   let form: FormData
@@ -21,7 +17,7 @@ export async function POST(req: Request) {
   upstream.append("file", file, file.name)
 
   try {
-    const res = await fetch(`${backendBase}/api/titanic/james/upload`, {
+    const res = await backendFetch(`${backendBase}/api/titanic/james/upload`, {
       method: "POST",
       body: upstream,
     })

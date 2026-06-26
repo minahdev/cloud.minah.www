@@ -1,4 +1,4 @@
-const backendBase = (process.env.BACKEND_URL ?? "http://127.0.0.1:8000").replace(/\/$/, "")
+import { backendBase, backendFetch } from "@/lib/backend"
 
 export async function GET(req: Request) {
   const userId = new URL(req.url).searchParams.get("userId")?.trim()
@@ -7,7 +7,7 @@ export async function GET(req: Request) {
   }
 
   try {
-    const res = await fetch(
+    const res = await backendFetch(
       `${backendBase}/schedule/access/admitted?${new URLSearchParams({ userId })}`,
       { cache: "no-store" },
     )

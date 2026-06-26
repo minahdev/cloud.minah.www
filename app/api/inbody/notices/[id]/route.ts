@@ -1,4 +1,4 @@
-const backendBase = (process.env.BACKEND_URL ?? "http://127.0.0.1:8000").replace(/\/$/, "")
+import { backendBase, backendFetch } from "@/lib/backend"
 
 function err(data: unknown, fallback: string) {
   if (!data || typeof data !== "object") return fallback
@@ -14,7 +14,7 @@ export async function DELETE(
   const userId = new URL(req.url).searchParams.get("userId")?.trim()
   if (!userId) return Response.json({ error: "userId가 필요합니다." }, { status: 400 })
   const q = new URLSearchParams({ userId })
-  const res = await fetch(`${backendBase}/inbody/notices/${encodeURIComponent(id)}?${q}`, {
+  const res = await backendFetch(`${backendBase}/inbody/notices/${encodeURIComponent(id)}?${q}`, {
     method: "DELETE",
   })
   const data = await res.json().catch(() => ({}))

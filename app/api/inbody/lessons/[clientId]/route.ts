@@ -1,4 +1,4 @@
-const backendBase = (process.env.BACKEND_URL ?? "http://127.0.0.1:8000").replace(/\/$/, "")
+import { backendBase, backendFetch } from "@/lib/backend"
 
 function err(data: unknown, fallback: string) {
   if (!data || typeof data !== "object") return fallback
@@ -17,7 +17,7 @@ export async function DELETE(
   const q = new URLSearchParams({ userId })
   const memberUserId = params.get("memberUserId")
   if (memberUserId) q.set("memberUserId", memberUserId)
-  const res = await fetch(
+  const res = await backendFetch(
     `${backendBase}/inbody/lessons/${encodeURIComponent(clientId)}?${q}`,
     { method: "DELETE" },
   )

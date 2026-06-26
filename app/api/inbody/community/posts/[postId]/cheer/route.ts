@@ -1,4 +1,4 @@
-const backendBase = (process.env.BACKEND_URL ?? "http://127.0.0.1:8000").replace(/\/$/, "")
+import { backendBase, backendFetch } from "@/lib/backend"
 
 function err(data: unknown, fallback: string) {
   if (!data || typeof data !== "object") return fallback
@@ -11,7 +11,7 @@ type RouteCtx = { params: Promise<{ postId: string }> }
 export async function POST(req: Request, ctx: RouteCtx) {
   const { postId } = await ctx.params
   const body = await req.json()
-  const res = await fetch(`${backendBase}/inbody/community/posts/${postId}/cheer`, {
+  const res = await backendFetch(`${backendBase}/inbody/community/posts/${postId}/cheer`, {
     method: "POST",
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify(body),

@@ -1,4 +1,4 @@
-const backendBase = (process.env.BACKEND_URL ?? "http://127.0.0.1:8000").replace(/\/$/, "")
+import { backendBase, backendFetch } from "@/lib/backend"
 
 function err(data: unknown, fallback: string) {
   if (!data || typeof data !== "object") return fallback
@@ -8,7 +8,7 @@ function err(data: unknown, fallback: string) {
 
 export async function POST(req: Request) {
   const formData = await req.formData()
-  const res = await fetch(`${backendBase}/inbody/community/media`, {
+  const res = await backendFetch(`${backendBase}/inbody/community/media`, {
     method: "POST",
     body: formData,
   })

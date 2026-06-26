@@ -1,4 +1,4 @@
-const backendBase = (process.env.BACKEND_URL ?? "http://127.0.0.1:8000").replace(/\/$/, "")
+import { backendBase, backendFetch } from "@/lib/backend"
 
 function err(data: unknown, fallback: string) {
   if (!data || typeof data !== "object") return fallback
@@ -9,7 +9,7 @@ function err(data: unknown, fallback: string) {
 export async function GET(req: Request) {
   const userId = new URL(req.url).searchParams.get("userId")
   const qs = userId ? `?userId=${encodeURIComponent(userId)}` : ""
-  const res = await fetch(`${backendBase}/inbody/community/posts${qs}`, { cache: "no-store" })
+  const res = await backendFetch(`${backendBase}/inbody/community/posts${qs}`, { cache: "no-store" })
   const data = await res.json().catch(() => [])
   if (!res.ok) return Response.json({ error: err(data, "조회 실패") }, { status: res.status })
   return Response.json(data)
@@ -17,7 +17,7 @@ export async function GET(req: Request) {
 
 export async function POST(req: Request) {
   const body = await req.json()
-  const res = await fetch(`${backendBase}/inbody/community/posts`, {
+  const res = await backendFetch(`${backendBase}/inbody/community/posts`, {
     method: "POST",
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify(body),
