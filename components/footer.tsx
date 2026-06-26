@@ -17,10 +17,10 @@ export function Footer() {
         </p>
 
         <div className="flex items-center gap-6">
-          <Link href="/privacy" className="text-sm text-muted-foreground hover:text-foreground transition-colors">
+          <Link href="/settings/privacy" className="text-sm text-muted-foreground hover:text-foreground transition-colors">
             개인정보처리방침
           </Link>
-          <Link href="/terms" className="text-sm text-muted-foreground hover:text-foreground transition-colors">
+          <Link href="/settings/terms" className="text-sm text-muted-foreground hover:text-foreground transition-colors">
             이용약관
           </Link>
         </div>
