@@ -5,7 +5,7 @@ import Link from "next/link"
 import { usePathname, useRouter } from "next/navigation"
 import {
   Activity, ArrowLeft, BarChart3, BookOpen,
-  ChevronDown, Menu, Settings, Shield, UserRound, Zap,
+  ChevronDown, Mail, Menu, Settings, Shield, UserRound, Zap,
 } from "lucide-react"
 
 import { cn } from "@/lib/utils"
@@ -28,6 +28,7 @@ const mypageItems = [
 ] as const
 
 const serviceItems = [
+  { href: "/comm-agent", label: "이메일 발송", icon: Mail },
   { href: "/settings", label: "설정", icon: Settings },
 ] as const
 
