@@ -3,6 +3,9 @@ import { backendBase, backendFetch } from "@/lib/backend"
 type SendEmailBody = {
   email?: string
   topic?: string
+  subject?: string
+  sender_name?: string
+  email_type?: string
 }
 
 function errorFromFastAPI(body: unknown, fallback: string): string {
@@ -26,16 +29,20 @@ export async function POST(req: Request) {
 
   const email = body.email?.trim()
   const topic = body.topic?.trim()
+  const subject = body.subject?.trim() || ""
+  const senderName = body.sender_name?.trim() || ""
+  const emailType = body.email_type?.trim() || "general"
 
   if (!email || !topic) {
     return Response.json({ error: "이메일과 주제를 모두 입력하세요." }, { status: 400 })
   }
 
   try {
-    const res = await backendFetch(`${backendBase}/api/comm_agent/send`, {
+    // star_craft(Hub) 경유 → 온톨로지가 규격을 정해 comm_agent에 위임한다.
+    const res = await backendFetch(`${backendBase}/api/star_craft/compose-email`, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ email, topic }),
+      body: JSON.stringify({ email, subject, sender_name: senderName, topic, email_type: emailType }),
     })
 
     const data: unknown = await res.json().catch(() => ({}))
