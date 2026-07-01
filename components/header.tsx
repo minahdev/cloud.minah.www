@@ -5,7 +5,7 @@ import Link from "next/link"
 import { usePathname, useRouter } from "next/navigation"
 import {
   Activity, ArrowLeft, BarChart3, BookOpen,
-  ChevronDown, Contact, Mail, Menu, Settings, Shield, UserRound, Zap,
+  ChevronDown, Mail, Menu, Settings, Shield, UserRound, Zap,
 } from "lucide-react"
 
 import { cn } from "@/lib/utils"
@@ -27,9 +27,15 @@ const mypageItems = [
   { href: "/analytics",   label: "데이터 분석", icon: BarChart3 },
 ] as const
 
+// "메일" 부모 아래 서브메뉴
+const mailItems = [
+  { href: "/comm-agent", label: "이메일 발송" },
+  { href: "/contacts",   label: "주소록" },
+  { href: "/telegram",   label: "텔레그램" },
+  { href: "/inbox",      label: "메일 수신함" },
+] as const
+
 const serviceItems = [
-  { href: "/comm-agent", label: "이메일 발송", icon: Mail },
-  { href: "/contacts", label: "주소록", icon: Contact },
   { href: "/settings", label: "설정", icon: Settings },
 ] as const
 
@@ -164,6 +170,67 @@ function LessonMenuSection({ pathname, isTitanicActive }: { pathname: string; is
   )
 }
 
+function isMailActive(pathname: string) {
+  return mailItems.some((i) => pathname === i.href || pathname.startsWith(`${i.href}/`))
+}
+
+function MailMenuSection({ pathname }: { pathname: string }) {
+  const active = isMailActive(pathname)
+  const [expanded, setExpanded] = useState(active)
+
+  useEffect(() => {
+    if (active) setExpanded(true)
+  }, [active])
+
+  const showSubs = expanded || active
+
+  return (
+    <div className="flex flex-col gap-0.5">
+      <button
+        type="button"
+        aria-expanded={showSubs}
+        aria-label="메일 메뉴"
+        className={cn(
+          "mx-2 flex items-center justify-between rounded-lg py-2.5 text-sm font-medium transition-colors",
+          active
+            ? "border-l-2 border-primary bg-primary/10 pl-[10px] pr-3 text-foreground"
+            : "px-3 text-muted-foreground hover:bg-secondary/40 hover:text-foreground",
+        )}
+        onClick={() => setExpanded((o) => !o)}
+      >
+        <span className="flex items-center gap-3">
+          <Mail className="h-4 w-4 shrink-0" aria-hidden />
+          메일
+        </span>
+        <ChevronDown className={cn("h-4 w-4 shrink-0 transition-transform", showSubs && "rotate-180")} aria-hidden />
+      </button>
+
+      {showSubs && (
+        <div className="ml-7 mt-0.5 border-l border-border/50 pl-2">
+          {mailItems.map((sub) => {
+            const subActive = pathname === sub.href || pathname.startsWith(`${sub.href}/`)
+            return (
+              <SheetClose asChild key={sub.href}>
+                <Link
+                  href={sub.href}
+                  className={cn(
+                    "block rounded-lg px-3 py-2 text-sm font-medium transition-colors",
+                    subActive
+                      ? "bg-primary/10 text-foreground"
+                      : "text-muted-foreground hover:bg-secondary/40 hover:text-foreground",
+                  )}
+                >
+                  {sub.label}
+                </Link>
+              </SheetClose>
+            )
+          })}
+        </div>
+      )}
+    </div>
+  )
+}
+
 export function Header() {
   const pathname = usePathname()
   const router = useRouter()
@@ -248,6 +315,7 @@ export function Header() {
 
               {/* ── 서비스 관리 ── */}
               <SectionLabel className="mt-5">서비스 관리</SectionLabel>
+              <MailMenuSection pathname={pathname} />
               {serviceItems.map((item) => {
                 const isActive = pathname === item.href
                 const Icon = item.icon
